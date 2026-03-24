@@ -2,6 +2,14 @@
   <img src=".github/banners/05-replay-arrows.svg" alt="DBAR — Deterministic Browser Agent Runtime" width="800"/>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@pyyush/dbar"><img src="https://img.shields.io/npm/v/@pyyush/dbar?color=0a0a0a&labelColor=0a0a0a&label=npm" alt="npm version"></a>
+  <a href="https://github.com/pyyush/dbar/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/pyyush/dbar/ci.yml?branch=main&color=0a0a0a&labelColor=0a0a0a&label=CI" alt="CI"></a>
+  <a href="https://github.com/pyyush/dbar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-0a0a0a?labelColor=0a0a0a" alt="License"></a>
+  <img src="https://img.shields.io/node/v/@pyyush/dbar?color=0a0a0a&labelColor=0a0a0a&label=node" alt="Node version">
+  <img src="https://img.shields.io/badge/TypeScript-strict-0a0a0a?labelColor=0a0a0a" alt="TypeScript strict">
+</p>
+
 **Record a browser session. Replay it. Get the same result.**
 
 Browser automation is inherently non-deterministic — network timing varies, JavaScript timers fire unpredictably, and the same script produces different DOM states across runs. This makes browser-based workflows unreliable to test, impossible to audit, and difficult to trust.
