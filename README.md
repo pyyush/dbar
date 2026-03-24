@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@pyyush/dbar"><img src="https://img.shields.io/npm/v/@pyyush/dbar?color=0a0a0a&labelColor=0a0a0a&label=npm" alt="npm version"></a>
-  <a href="https://github.com/pyyush/dbar/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/pyyush/dbar/ci.yml?branch=main&color=0a0a0a&labelColor=0a0a0a&label=CI" alt="CI"></a>
+  <a href="https://github.com/pyyush/dbar/actions/workflows/ci.yml"><img src="https://github.com/pyyush/dbar/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/pyyush/dbar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-0a0a0a?labelColor=0a0a0a" alt="License"></a>
   <img src="https://img.shields.io/node/v/@pyyush/dbar?color=0a0a0a&labelColor=0a0a0a&label=node" alt="Node version">
   <img src="https://img.shields.io/badge/TypeScript-strict-0a0a0a?labelColor=0a0a0a" alt="TypeScript strict">
