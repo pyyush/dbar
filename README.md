@@ -7,14 +7,14 @@ Browser automation is inherently non-deterministic — network timing varies, Ja
 DBAR fixes this. It freezes time, records every network response, and captures the full page state at each step. The result is a portable **capsule** — a self-contained artifact you can replay later to verify that the same inputs produce the same outputs.
 
 ```bash
-npm install dbar playwright-core
+npm install @pyyush/dbar playwright-core
 ```
 
 ## 30-Second Example
 
 ```ts
 import { chromium } from "playwright-core";
-import { DBAR, serializeCapsuleArchive } from "dbar";
+import { DBAR, serializeCapsuleArchive } from "@pyyush/dbar";
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -37,7 +37,7 @@ That's it. Your existing Playwright code doesn't change. DBAR wraps around it.
 ## Replay and Verify
 
 ```ts
-import { DBAR, deserializeCapsuleArchive } from "dbar";
+import { DBAR, deserializeCapsuleArchive } from "@pyyush/dbar";
 
 const archive = deserializeCapsuleArchive(capsule);
 const result = await DBAR.replay(page, archive);
@@ -172,7 +172,7 @@ import {
   DeterminismCapsuleSchema,
   CapsuleStepSchema,
   // ... etc
-} from "dbar";
+} from "@pyyush/dbar";
 ```
 
 You don't have to use the high-level `DBAR` API. Each piece works standalone with a Playwright `Page` or CDP `CDPSession`.
