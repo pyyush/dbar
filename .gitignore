@@ -4,3 +4,4 @@ dist/
 *.tsbuildinfo
 .dev-session/
 .staff-engineer-state.json
+CLAUDE.md
