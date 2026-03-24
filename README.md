@@ -1,4 +1,6 @@
-# DBAR
+<p align="center">
+  <img src=".github/banners/05-replay-arrows.svg" alt="DBAR — Deterministic Browser Agent Runtime" width="800"/>
+</p>
 
 **Record a browser session. Replay it. Get the same result.**
 
