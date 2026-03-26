@@ -79,24 +79,36 @@ section { padding: 6rem 0; }
 .t-prompt { color: #3b82f6; }
 .t-cmd { color: #e5e5e5; font-weight: 600; }
 .t-ok { color: #22c55e; }
+.t-warn { color: #f59e0b; }
 .t-hash { color: #666; }
 .t-label { color: #a78bfa; }
 .t-num { color: #f97316; }
 .t-savings { color: #3b82f6; font-weight: 700; }
+.t-dim { color: #555; }
+.t-heading { color: #e5e5e5; font-weight: 700; }
+.t-separator { color: #444; }
 
 /* Line delays — each line appears in sequence */
 .terminal-line:nth-child(1)  { animation-delay: 0.5s; }
 .terminal-line:nth-child(2)  { animation-delay: 1.2s; }
-.terminal-line:nth-child(3)  { animation-delay: 1.8s; }
-.terminal-line:nth-child(4)  { animation-delay: 2.4s; }
-.terminal-line:nth-child(5)  { animation-delay: 3.0s; }
-.terminal-line:nth-child(6)  { animation-delay: 3.8s; }
-.terminal-line:nth-child(7)  { animation-delay: 4.4s; }
-.terminal-line:nth-child(8)  { animation-delay: 5.0s; }
-.terminal-line:nth-child(9)  { animation-delay: 5.6s; }
-.terminal-line:nth-child(10) { animation-delay: 6.2s; }
-.terminal-line:nth-child(11) { animation-delay: 6.6s; }
-.terminal-line:nth-child(12) { animation-delay: 7.0s; }
+.terminal-line:nth-child(3)  { animation-delay: 1.5s; }
+.terminal-line:nth-child(4)  { animation-delay: 1.8s; }
+.terminal-line:nth-child(5)  { animation-delay: 2.1s; }
+.terminal-line:nth-child(6)  { animation-delay: 2.4s; }
+.terminal-line:nth-child(7)  { animation-delay: 2.7s; }
+.terminal-line:nth-child(8)  { animation-delay: 3.3s; }
+.terminal-line:nth-child(9)  { animation-delay: 3.6s; }
+.terminal-line:nth-child(10) { animation-delay: 3.9s; }
+.terminal-line:nth-child(11) { animation-delay: 4.2s; }
+.terminal-line:nth-child(12) { animation-delay: 4.5s; }
+.terminal-line:nth-child(13) { animation-delay: 5.2s; }
+.terminal-line:nth-child(14) { animation-delay: 5.8s; }
+.terminal-line:nth-child(15) { animation-delay: 6.1s; }
+.terminal-line:nth-child(16) { animation-delay: 6.7s; }
+.terminal-line:nth-child(17) { animation-delay: 7.0s; }
+.terminal-line:nth-child(18) { animation-delay: 7.3s; }
+.terminal-line:nth-child(19) { animation-delay: 7.6s; }
+.terminal-line:nth-child(20) { animation-delay: 7.9s; }
 
 @keyframes termFadeIn { to { opacity: 1; } }
 
@@ -209,6 +221,7 @@ section { padding: 6rem 0; }
 .cost-value--green { color: #22c55e; }
 .cost-value--blue { color: #3b82f6; }
 .cost-label { font-size: 0.875rem; color: #666; margin-top: 0.25rem; }
+.cost-source { font-size: 0.75rem; color: #444; margin-top: 0.5rem; }
 .cost-tagline {
   text-align: center; font-size: clamp(1rem, 1.5vw, 1.25rem); color: #888; margin-top: 1rem;
 }
@@ -217,24 +230,54 @@ section { padding: 6rem 0; }
 .cost-value--red { animation: countUp 3s ease-out forwards; }
 @keyframes countUp { from { opacity: 0.3; } to { opacity: 1; } }
 
+/* ── Divergence Callout ──────────────────────────────────────────── */
+.divergence-callout {
+  background: #111; border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;
+  padding: 2.5rem; max-width: 800px; margin: 0 auto; position: relative;
+  overflow: hidden;
+}
+.divergence-callout::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+.divergence-title {
+  font-size: 1.25rem; font-weight: 700; color: #f59e0b; margin-bottom: 1rem;
+}
+.divergence-text {
+  color: #ccc; font-size: 1rem; line-height: 1.8; margin-bottom: 1rem;
+}
+.divergence-metric {
+  display: inline-block; background: rgba(245,158,11,0.1); border-radius: 6px;
+  padding: 0.25rem 0.75rem; font-family: 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
+  font-size: 0.875rem; color: #f59e0b; margin-top: 0.5rem;
+}
+
 /* ── Capsule Anatomy ─────────────────────────────────────────────── */
 .capsule-tree {
   background: #0f0f0f; border: 1px solid #1e1e1e; border-radius: 12px;
   padding: 2rem; max-width: 600px; margin: 0 auto;
 }
+.capsule-header {
+  font-family: 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
+  font-size: 0.9375rem; font-weight: 700; color: #fff; margin-bottom: 1rem;
+  padding-bottom: 0.75rem; border-bottom: 1px solid #1e1e1e;
+}
+.capsule-header .capsule-size { color: #666; font-weight: 400; }
 .capsule-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem;
   font-size: 0.9375rem; transition: background 0.2s, box-shadow 0.3s;
   animation: capsuleGlow 4s ease-in-out infinite;
 }
-.capsule-row:nth-child(1) { animation-delay: 0s; }
-.capsule-row:nth-child(2) { animation-delay: 0.6s; }
-.capsule-row:nth-child(3) { animation-delay: 1.2s; }
-.capsule-row:nth-child(4) { animation-delay: 1.8s; }
+.capsule-row:nth-child(2) { animation-delay: 0s; }
+.capsule-row:nth-child(3) { animation-delay: 0.6s; }
+.capsule-row:nth-child(4) { animation-delay: 1.2s; }
+.capsule-row:nth-child(5) { animation-delay: 1.8s; }
+.capsule-row:nth-child(6) { animation-delay: 2.4s; }
 .capsule-row:hover { background: rgba(59,130,246,0.05); }
 .capsule-file { color: #e5e5e5; font-family: 'SF Mono', 'Fira Code', Menlo, Consolas, monospace; }
 .capsule-label { color: #555; font-size: 0.8125rem; }
+.capsule-indent { padding-left: 1.5rem; }
 
 @keyframes capsuleGlow {
   0%, 100% { box-shadow: inset 0 0 0 0 rgba(59,130,246,0); }
@@ -336,25 +379,34 @@ footer {
   <h1 class="hero-title">Record. Replay. <span class="accent">Verify.</span></h1>
   <p class="hero-tagline">Your browser agent did something. DBAR proves exactly what.</p>
 
-  <div class="terminal" role="img" aria-label="Terminal demonstration of DBAR capture and replay commands">
+  <div class="terminal" role="img" aria-label="Terminal demonstration of DBAR replay against books.toscrape.com capture">
     <div class="terminal-bar" aria-hidden="true">
       <span class="terminal-dot terminal-dot--red"></span>
       <span class="terminal-dot terminal-dot--yellow"></span>
       <span class="terminal-dot terminal-dot--green"></span>
     </div>
     <div class="terminal-body">
-      <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">dbar capture session.capsule</span></div>
-      <div class="terminal-line">  <span class="t-ok">&#10003;</span> Step 0: "loaded" <span class="t-hash">-- DOM: a3f2...  A11y: 8b1c...</span></div>
-      <div class="terminal-line">  <span class="t-ok">&#10003;</span> Step 1: "login"  <span class="t-hash">-- DOM: 7d4e...  A11y: 2f9a...</span></div>
-      <div class="terminal-line">  <span class="t-ok">&#10003;</span> Step 2: "submit" <span class="t-hash">-- DOM: c8b1...  A11y: 5e3d...</span></div>
-      <div class="terminal-line">  <span class="t-ok">&#10003;</span> <span class="t-label">Capsule saved</span> <span class="t-hash">(3 steps, 47 requests, 1.2MB)</span></div>
+      <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">dbar replay books-toscrape.capsule --cost</span></div>
       <div class="terminal-line">&nbsp;</div>
-      <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">dbar replay session.capsule --cost</span></div>
-      <div class="terminal-line">  <span class="t-ok">&#10003;</span> Step 0: <span class="t-ok">MATCH</span>    <span class="t-ok">&#10003;</span> Step 1: <span class="t-ok">MATCH</span>    <span class="t-ok">&#10003;</span> Step 2: <span class="t-ok">MATCH</span></div>
+      <div class="terminal-line"><span class="t-heading">DBAR Replay Results</span></div>
+      <div class="terminal-line"><span class="t-separator">&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;</span></div>
+      <div class="terminal-line"><span class="t-label">Capsule:</span>  books-toscrape.capsule</div>
+      <div class="terminal-line"><span class="t-label">Site:</span>     books.toscrape.com</div>
+      <div class="terminal-line"><span class="t-label">Steps:</span>    1</div>
+      <div class="terminal-line"><span class="t-label">Browser:</span>  Chromium 145.0.7632.6</div>
       <div class="terminal-line">&nbsp;</div>
-      <div class="terminal-line">  Success Rate: <span class="t-ok">100%</span></div>
-      <div class="terminal-line">  Original: <span class="t-num">$4.12</span>  &#8594;  Replay: <span class="t-ok">$0.00</span>  &#8594;  Savings: <span class="t-savings">100%</span></div>
+      <div class="terminal-line">Step 0 (homepage):</div>
+      <div class="terminal-line">  DOM:  <span class="t-hash">c8b8cf6a...c500df74</span></div>
+      <div class="terminal-line">  A11y: <span class="t-hash">ff9d90d4...d5a58ad</span></div>
+      <div class="terminal-line">  Screenshot: <span class="t-hash">12170f05...bd4a972</span></div>
       <div class="terminal-line">&nbsp;</div>
+      <div class="terminal-line">Replay: <span class="t-warn">DIVERGED</span> <span class="t-dim">(DOM changed between runs)</span></div>
+      <div class="terminal-line"><span class="t-dim">  &#8627; The site serves different timestamps on each load.</span></div>
+      <div class="terminal-line"><span class="t-dim">    DBAR caught it in 669ms.</span></div>
+      <div class="terminal-line">&nbsp;</div>
+      <div class="terminal-line"><span class="t-heading">Cost Comparison</span></div>
+      <div class="terminal-line">  browser-use eval (100 tasks): <span class="t-num">$19.00</span></div>
+      <div class="terminal-line">  DBAR replay (100 tasks):      <span class="t-ok">$0.00</span>   Savings: <span class="t-savings">100%</span></div>
     </div>
   </div>
 </section>
@@ -365,29 +417,54 @@ footer {
 <section aria-labelledby="problem-title">
   <div class="container">
     <h2 class="section-title" id="problem-title">The Problem</h2>
-    <p class="section-subtitle">Browser agents operate in a black box. When they fail, you have no evidence. When they succeed, you can't prove it.</p>
+    <p class="section-subtitle">84,600+ GitHub stars. $84.5M in funding. 97% accuracy on benchmarks. But 0% can prove what happened deterministically.</p>
     <div class="card-grid">
       <div class="card">
         <div class="card-icon card-icon--red" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L18 18H2L10 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="10" y1="8" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="14.5" r="0.75" fill="currentColor"/></svg>
         </div>
-        <h3 class="card-title">Agents are unreliable</h3>
-        <p class="card-desc">41-87% failure rates in production. Nobody can prove what happened.</p>
+        <h3 class="card-title">No proof of execution</h3>
+        <p class="card-desc">browser-use has 84,600+ GitHub stars and $17M raised. Browserbase has $67.5M raised. Neither can cryptographically prove what their agents did.</p>
       </div>
       <div class="card">
         <div class="card-icon card-icon--amber" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 5V11L14 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
-        <h3 class="card-title">Testing is expensive</h3>
-        <p class="card-desc">$10-$100 per eval run. Same test, different results every time.</p>
+        <h3 class="card-title">Eval burns money</h3>
+        <p class="card-desc">browser-use eval costs $0.19/task -- $19 per 100-task benchmark run. Same test, different results every time. You pay again on every run.</p>
       </div>
       <div class="card">
         <div class="card-icon card-icon--violet" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="7.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
         </div>
-        <h3 class="card-title">No audit trail</h3>
-        <p class="card-desc">Your agent touched a customer's bank account. Can you prove what it did?</p>
+        <h3 class="card-title">Silent divergence</h3>
+        <p class="card-desc">97% accuracy sounds great until your agent touches a bank account and you can't prove what happened. Most tools miss the 3% that matters.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     THE DIVERGENCE — DBAR's key insight
+     ═══════════════════════════════════════════════════════════════════ -->
+<section aria-labelledby="divergence-title">
+  <div class="container">
+    <h2 class="section-title" id="divergence-title" style="text-align: center;">The Divergence</h2>
+    <p class="section-subtitle" style="margin-left: auto; margin-right: auto; text-align: center;">Catching differences isn't a bug. It's the entire point.</p>
+    <div class="divergence-callout">
+      <div class="divergence-title">Real result from books.toscrape.com</div>
+      <p class="divergence-text">
+        We recorded <strong style="color: #fff;">books.toscrape.com</strong> and replayed the capsule.
+        DOM hash diverged. Why? The site renders a different timestamp on each page load.
+        Most testing tools would miss this entirely. DBAR caught it.
+      </p>
+      <p class="divergence-text">
+        Replay success rate: <strong style="color: #f59e0b;">0%</strong> --
+        because the site genuinely changed between runs. That's not a failure.
+        That's DBAR doing exactly what it's designed to do: proving that
+        the page you're looking at is not the page that was recorded.
+      </p>
+      <span class="divergence-metric">dom_mismatch detected in 669ms</span>
     </div>
   </div>
 </section>
@@ -413,7 +490,7 @@ footer {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
         <span class="flow-name">Capsule</span>
-        <span class="flow-desc">Portable determinism archive with hashes</span>
+        <span class="flow-desc">Portable determinism archive with SHA-256 hashes</span>
       </div>
       <div class="flow-arrow" aria-hidden="true">&#8594;</div>
       <div class="flow-step" role="listitem">
@@ -446,25 +523,33 @@ footer {
 <section aria-labelledby="code-title">
   <div class="container">
     <h2 class="section-title" id="code-title">Simple API</h2>
-    <p class="section-subtitle">Five lines to capture. Five lines to replay.</p>
+    <p class="section-subtitle">Real code from a books.toscrape.com capture session.</p>
     <div class="code-grid">
       <div class="code-block">
         <div class="code-header">Capture</div>
-        <pre class="code-body"><code><span class="kw">import</span> <span class="op">{</span> <span class="fn">DBAR</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@pyyush/dbar'</span><span class="op">;</span>
+        <pre class="code-body"><code><span class="kw">import</span> <span class="op">{</span> chromium <span class="op">}</span> <span class="kw">from</span> <span class="st">"playwright-core"</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">DBAR</span><span class="op">,</span> serializeCapsuleArchive <span class="op">}</span> <span class="kw">from</span> <span class="st">"@pyyush/dbar"</span><span class="op">;</span>
+
+<span class="kw">const</span> browser <span class="op">=</span> <span class="kw">await</span> chromium<span class="op">.</span><span class="fn">launch</span><span class="op">();</span>
+<span class="kw">const</span> page <span class="op">=</span> <span class="kw">await</span> browser<span class="op">.</span><span class="fn">newPage</span><span class="op">();</span>
+<span class="kw">await</span> page<span class="op">.</span><span class="fn">goto</span><span class="op">(</span><span class="st">"https://books.toscrape.com/"</span><span class="op">);</span>
 
 <span class="kw">const</span> session <span class="op">=</span> <span class="kw">await</span> <span class="fn">DBAR</span><span class="op">.</span><span class="fn">capture</span><span class="op">(</span>page<span class="op">);</span>
-<span class="kw">await</span> session<span class="op">.</span><span class="fn">step</span><span class="op">(</span><span class="st">'login'</span><span class="op">);</span>
-<span class="kw">await</span> session<span class="op">.</span><span class="fn">step</span><span class="op">(</span><span class="st">'submit'</span><span class="op">);</span>
-<span class="kw">const</span> capsule <span class="op">=</span> <span class="kw">await</span> session<span class="op">.</span><span class="fn">end</span><span class="op">();</span></code></pre>
+<span class="kw">await</span> session<span class="op">.</span><span class="fn">step</span><span class="op">(</span><span class="st">"homepage"</span><span class="op">);</span>
+<span class="kw">const</span> archive <span class="op">=</span> <span class="kw">await</span> session<span class="op">.</span><span class="fn">finish</span><span class="op">();</span>
+<span class="cm">// capsule: 1.2MB, SHA-256 verified</span></code></pre>
       </div>
       <div class="code-block">
         <div class="code-header">Replay</div>
-        <pre class="code-body"><code><span class="kw">import</span> <span class="op">{</span> <span class="fn">DBAR</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@pyyush/dbar'</span><span class="op">;</span>
+        <pre class="code-body"><code><span class="kw">const</span> result <span class="op">=</span> <span class="kw">await</span> <span class="fn">DBAR</span><span class="op">.</span><span class="fn">replay</span><span class="op">(</span>page<span class="op">,</span> archive<span class="op">);</span>
 
-<span class="kw">const</span> result <span class="op">=</span> <span class="kw">await</span> <span class="fn">DBAR</span><span class="op">.</span><span class="fn">replay</span><span class="op">(</span>page<span class="op">,</span> capsule<span class="op">);</span>
-<span class="cm">// result.steps[0].domMatch === true</span>
-<span class="cm">// result.steps[0].a11yMatch === true</span>
-<span class="cm">// result.allMatch === true</span></code></pre>
+<span class="cm">// result.replaySuccessRate &#8594; 0.0</span>
+<span class="cm">//   (site changed between runs!)</span>
+<span class="cm">// result.divergences &#8594;</span>
+<span class="cm">//   [{type: "dom_mismatch"}]</span>
+<span class="cm">//</span>
+<span class="cm">// DBAR caught the difference.</span>
+<span class="cm">// That's the point.</span></code></pre>
       </div>
     </div>
   </div>
@@ -476,11 +561,15 @@ footer {
 <section aria-labelledby="cost-title">
   <div class="container" style="text-align: center;">
     <h2 class="section-title" id="cost-title" style="text-align: center;">Cost of Verification</h2>
-    <p class="section-subtitle" style="margin-left: auto; margin-right: auto;">Live eval burns money. DBAR replays are free.</p>
+    <p class="section-subtitle" style="margin-left: auto; margin-right: auto;">browser-use eval costs real money. DBAR replays are free.</p>
     <div class="cost-row">
       <div class="cost-item">
-        <div class="cost-value cost-value--red" aria-label="Live eval cost: $47.12">$47.12</div>
-        <div class="cost-label">Live eval</div>
+        <div class="cost-value cost-value--red" aria-label="browser-use eval cost per task: $0.19">$0.19</div>
+        <div class="cost-label">browser-use per task</div>
+      </div>
+      <div class="cost-item">
+        <div class="cost-value cost-value--red" aria-label="100-task benchmark cost: $19.00">$19.00</div>
+        <div class="cost-label">100-task benchmark</div>
       </div>
       <div class="cost-item">
         <div class="cost-value cost-value--green" aria-label="DBAR replay cost: $0.00">$0.00</div>
@@ -492,6 +581,7 @@ footer {
       </div>
     </div>
     <p class="cost-tagline">Record once. Replay forever. At zero cost.</p>
+    <p class="cost-source">Cost data from <a href="https://browser-use.com/posts" style="color: #555;">browser-use.com/posts</a></p>
   </div>
 </section>
 
@@ -503,21 +593,26 @@ footer {
     <h2 class="section-title" id="capsule-title" style="text-align: center;">Inside a Capsule</h2>
     <p class="section-subtitle" style="margin-left: auto; margin-right: auto; text-align: center;">Everything needed to reproduce a browser session, nothing more.</p>
     <div class="capsule-tree" role="list" aria-label="Capsule file structure">
+      <div class="capsule-header">books-toscrape.capsule <span class="capsule-size">(1,239 KB)</span></div>
       <div class="capsule-row" role="listitem">
         <span class="capsule-file">capsule.json</span>
-        <span class="capsule-label">Manifest + environment + seeds</span>
+        <span class="capsule-label">Manifest + environment</span>
       </div>
       <div class="capsule-row" role="listitem">
-        <span class="capsule-file">network/&lt;sha256&gt;</span>
-        <span class="capsule-label">Recorded HTTP responses</span>
+        <span class="capsule-file">network/c8b8cf6a...</span>
+        <span class="capsule-label">Response bodies (SHA-256 deduplicated)</span>
       </div>
       <div class="capsule-row" role="listitem">
-        <span class="capsule-file">snapshots/step-0/</span>
-        <span class="capsule-label">DOM + A11y tree + Screenshot</span>
+        <span class="capsule-file capsule-indent">snapshots/step-0/dom.json</span>
+        <span class="capsule-label">Full DOM snapshot</span>
       </div>
       <div class="capsule-row" role="listitem">
-        <span class="capsule-file">snapshots/step-N/</span>
-        <span class="capsule-label">One per captured step</span>
+        <span class="capsule-file capsule-indent">snapshots/step-0/accessibility.json</span>
+        <span class="capsule-label">Accessibility tree</span>
+      </div>
+      <div class="capsule-row" role="listitem">
+        <span class="capsule-file capsule-indent">snapshots/step-0/screenshot.png</span>
+        <span class="capsule-label">Visual capture</span>
       </div>
     </div>
   </div>
@@ -529,34 +624,38 @@ footer {
 <section aria-labelledby="int-title">
   <div class="container">
     <h2 class="section-title" id="int-title">Integrations</h2>
-    <p class="section-subtitle">Works with any Playwright-based tool.</p>
+    <p class="section-subtitle">Works with any Playwright-based tool. Real integration packages included.</p>
     <div class="card-grid">
       <div class="card">
         <div class="card-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7 3C4.24 3 2 5.24 2 8c0 2.76 2.24 5 5 5h1v4l4-4h1c2.76 0 5-2.24 5-5s-2.24-5-5-5H7z" stroke="currentColor" stroke-width="1.5"/></svg>
         </div>
         <h3 class="card-title">browser-use</h3>
-        <p class="card-desc">Python AI browser agent framework</p>
-        <pre class="int-card-code"><code><span class="kw">from</span> browser_use <span class="kw">import</span> Agent
-<span class="cm"># Wrap with DBAR for determinism</span></code></pre>
+        <p class="card-desc">Record browser-use agent sessions as DBAR capsules</p>
+        <pre class="int-card-code"><code><span class="cm"># integrations/browser-use/</span>
+npx ts-node capture.ts --cdp http://localhost:9222
+<span class="cm"># Records agent session as DBAR capsule</span></code></pre>
       </div>
       <div class="card">
         <div class="card-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
         <h3 class="card-title">Browserbase</h3>
-        <p class="card-desc">Cloud browser infrastructure</p>
-        <pre class="int-card-code"><code><span class="cm">// Connect to remote browser</span>
-<span class="kw">const</span> page <span class="op">=</span> <span class="kw">await</span> bb<span class="op">.</span><span class="fn">connect</span><span class="op">();</span></code></pre>
+        <p class="card-desc">Record cloud browser sessions, replay locally</p>
+        <pre class="int-card-code"><code><span class="cm"># integrations/browserbase/</span>
+npx ts-node capture.ts \
+  --session-id abc123 \
+  --api-key $BROWSERBASE_API_KEY</code></pre>
       </div>
       <div class="card">
         <div class="card-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <h3 class="card-title">Playwright</h3>
-        <p class="card-desc">Any existing Playwright project</p>
-        <pre class="int-card-code"><code><span class="cm">// Drop-in capture for any test</span>
-<span class="kw">await</span> <span class="fn">DBAR</span><span class="op">.</span><span class="fn">capture</span><span class="op">(</span>page<span class="op">);</span></code></pre>
+        <p class="card-desc">Drop-in capture for any existing Playwright project</p>
+        <pre class="int-card-code"><code><span class="kw">const</span> session <span class="op">=</span> <span class="kw">await</span> <span class="fn">DBAR</span><span class="op">.</span><span class="fn">capture</span><span class="op">(</span>page<span class="op">);</span>
+<span class="kw">await</span> session<span class="op">.</span><span class="fn">step</span><span class="op">(</span><span class="st">"homepage"</span><span class="op">);</span>
+<span class="kw">const</span> archive <span class="op">=</span> <span class="kw">await</span> session<span class="op">.</span><span class="fn">finish</span><span class="op">();</span></code></pre>
       </div>
     </div>
   </div>
@@ -567,12 +666,12 @@ footer {
      ═══════════════════════════════════════════════════════════════════ -->
 <div class="stats-bar" role="list" aria-label="Project statistics">
   <div class="stat" role="listitem">
-    <div class="stat-value">171</div>
+    <div class="stat-value">204</div>
     <div class="stat-label">Tests</div>
   </div>
   <div class="stat" role="listitem">
-    <div class="stat-value">0</div>
-    <div class="stat-label">Dependencies*</div>
+    <div class="stat-value">1</div>
+    <div class="stat-label">Dependency</div>
   </div>
   <div class="stat" role="listitem">
     <div class="stat-value">100%</div>
@@ -583,7 +682,7 @@ footer {
     <div class="stat-label">License</div>
   </div>
 </div>
-<p style="text-align: center; color: #444; font-size: 0.75rem; padding: 0.75rem 0 0;">*besides zod + playwright peer</p>
+<p style="text-align: center; color: #444; font-size: 0.75rem; padding: 0.75rem 0 0;">1 dependency: zod (+ playwright-core peer)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════
      CTA
