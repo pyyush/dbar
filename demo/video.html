@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>DBAR Demo Reel</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #0a0a0a;
+  color: #e4e4e7;
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", "Menlo", monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Pause system ─────────────────────────────────────── */
+body.paused, body.paused * {
+  animation-play-state: paused !important;
+}
+
+/* ── Shared keyframes ─────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(60px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(59,130,246,0.3), 0 0 60px rgba(59,130,246,0.1); }
+  50%      { text-shadow: 0 0 40px rgba(59,130,246,0.6), 0 0 100px rgba(59,130,246,0.2); }
+}
+@keyframes cursorBlink {
+  0%, 100% { border-color: #3b82f6; }
+  50%      { border-color: transparent; }
+}
+@keyframes progressFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes pulseBlue {
+  0%, 100% { text-shadow: 0 0 10px rgba(59,130,246,0.4); }
+  50%      { text-shadow: 0 0 30px rgba(59,130,246,0.8); }
+}
+@keyframes checkPop {
+  0%   { opacity: 0; transform: scale(0.3); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Scene container ──────────────────────────────────── */
+.scene {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Typewriter line helper ───────────────────────────── */
+.tw {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  border-right: 2px solid transparent;
+  display: inline-block;
+}
+.tw.cursor {
+  border-right-color: #3b82f6;
+  animation: cursorBlink 0.8s step-end infinite;
+}
+
+/* === SCENE 1: Title Card (0s-5s) ===================== */
+#scene1 {
+  animation: fadeIn 0.8s ease forwards, fadeOut 0.6s ease 4.4s forwards;
+}
+#scene1 .title {
+  font-size: 120px;
+  font-weight: 700;
+  letter-spacing: 16px;
+  color: #fff;
+  animation: glow 2.5s ease-in-out infinite;
+  opacity: 0;
+  animation: fadeIn 1s ease 0.3s forwards, glow 2.5s ease-in-out 0.3s infinite;
+}
+#scene1 .subtitle {
+  font-size: 28px;
+  color: #a1a1aa;
+  margin-top: 16px;
+  letter-spacing: 4px;
+  opacity: 0;
+  animation: fadeIn 0.8s ease 1s forwards;
+}
+#scene1 .tagline {
+  font-size: 22px;
+  color: #3b82f6;
+  margin-top: 32px;
+  letter-spacing: 6px;
+  opacity: 0;
+  animation: fadeIn 0.8s ease 1.8s forwards;
+}
+
+/* === SCENE 2: The Problem (5s-15s) =================== */
+#scene2 {
+  animation: fadeIn 0.6s ease 5s forwards, fadeOut 0.6s ease 14.4s forwards;
+  padding: 0 240px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Typewriter lines for scene 2 — each is a block line */
+.s2-line {
+  font-size: 32px;
+  line-height: 1.8;
+  color: #d4d4d8;
+  opacity: 0;
+}
+.s2-line.blank { height: 24px; }
+
+/* Staggered fade-in to simulate typewriter across lines */
+.s2-l1  { animation: fadeIn 0.01s ease 5.8s forwards; }
+.s2-l2  { animation: fadeIn 0.01s ease 6.0s forwards; }
+.s2-blank1 { animation: fadeIn 0.01s ease 6.0s forwards; }
+.s2-l3  { animation: fadeIn 0.01s ease 6.8s forwards; }
+.s2-l4  { animation: fadeIn 0.01s ease 7.4s forwards; }
+.s2-l5  { animation: fadeIn 0.01s ease 8.0s forwards; }
+.s2-blank2 { animation: fadeIn 0.01s ease 8.0s forwards; }
+.s2-l6  { animation: fadeIn 0.01s ease 8.8s forwards; }
+
+/* Each line has a typewriter span inside */
+.s2-l1 .tw  { animation: typing 0.9s steps(28) 5.8s forwards; width: 0; }
+.s2-l2 .tw  { animation: none; width: auto; }
+.s2-l3 .tw  { animation: typing 1.2s steps(40) 6.8s forwards; width: 0; }
+.s2-l4 .tw  { animation: typing 1.0s steps(35) 7.4s forwards; width: 0; }
+.s2-l5 .tw  { animation: typing 0.9s steps(30) 8.0s forwards; width: 0; }
+.s2-l6 .tw  { animation: typing 1.2s steps(40) 8.8s forwards; width: 0; }
+
+@keyframes typing {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+.s2-question {
+  font-size: 48px;
+  color: #fff;
+  margin-top: 60px;
+  opacity: 0;
+  animation: fadeInUp 0.8s ease 10.5s forwards;
+  font-style: italic;
+  text-align: center;
+  width: 100%;
+}
+
+/* Star/money highlights */
+.hl-stars  { color: #f59e0b; }
+.hl-money  { color: #22c55e; }
+.hl-accent { color: #3b82f6; }
+
+/* === SCENE 3: The Capture (15s-35s) ================== */
+#scene3 {
+  animation: fadeIn 0.6s ease 15s forwards, fadeOut 0.6s ease 34.4s forwards;
+  padding: 60px 200px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* macOS terminal window */
+.terminal {
+  width: 1400px;
+  background: #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.terminal-bar {
+  height: 40px;
+  background: #2a2a2a;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+}
+.terminal-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+.dot-red    { background: #ff5f57; }
+.dot-yellow { background: #febc2e; }
+.dot-green  { background: #28c840; }
+.terminal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  margin-right: 52px;
+}
+.terminal-body {
+  padding: 24px 28px;
+  font-size: 18px;
+  line-height: 1.7;
+  min-height: 520px;
+}
+
+/* Terminal lines for scene 3 */
+.t-line {
+  opacity: 0;
+  white-space: pre;
+}
+.t-prompt { color: #22c55e; }
+.t-cmd    { color: #e4e4e7; }
+.t-output { color: #a1a1aa; }
+.t-check  { color: #22c55e; }
+.t-label  { color: #71717a; }
+.t-hash   { color: #3b82f6; }
+.t-dim    { color: #52525b; }
+
+/* Scene 3 line timings — command typing then output appears */
+/* npm install command */
+.s3-l1  { animation: fadeIn 0.01s ease 16s forwards; }
+.s3-l1 .tw { animation: typing 1.5s steps(42) 16s forwards; width: 0; }
+.s3-l2  { animation: fadeIn 0.3s ease 17.8s forwards; }
+/* blank */
+.s3-l3  { animation: fadeIn 0.01s ease 18.5s forwards; }
+/* node capture.js */
+.s3-l4  { animation: fadeIn 0.01s ease 18.8s forwards; }
+.s3-l4 .tw { animation: typing 0.8s steps(18) 18.8s forwards; width: 0; }
+.s3-l5  { animation: fadeIn 0.3s ease 20s forwards; }
+/* blank */
+.s3-l6  { animation: fadeIn 0.01s ease 20.5s forwards; }
+/* DBAR.capture */
+.s3-l7  { animation: fadeIn 0.3s ease 21s forwards; }
+/* step 0 */
+.s3-l8  { animation: checkPop 0.4s ease 22s forwards; }
+/* hashes */
+.s3-l9  { animation: fadeIn 0.3s ease 22.8s forwards; }
+.s3-l10 { animation: fadeIn 0.3s ease 23.3s forwards; }
+.s3-l11 { animation: fadeIn 0.3s ease 23.8s forwards; }
+/* blank + capsule saved */
+.s3-l12 { animation: fadeIn 0.01s ease 24.5s forwards; }
+.s3-l13 { animation: checkPop 0.4s ease 25s forwards; }
+
+/* === SCENE 4: The Replay (35s-55s) =================== */
+#scene4 {
+  animation: fadeIn 0.6s ease 35s forwards, fadeOut 0.6s ease 54.4s forwards;
+  padding: 60px 200px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scene 4 line timings */
+.s4-l1  { animation: fadeIn 0.01s ease 36s forwards; }
+.s4-l1 .tw { animation: typing 1.5s steps(44) 36s forwards; width: 0; }
+/* blank */
+.s4-l2  { animation: fadeIn 0.01s ease 37.8s forwards; }
+.s4-l3  { animation: fadeIn 0.3s ease 38.2s forwards; }
+/* step 0 diverged */
+.s4-l4  { animation: checkPop 0.4s ease 39s forwards; }
+/* blank */
+.s4-l5  { animation: fadeIn 0.01s ease 39.8s forwards; }
+/* explanation */
+.s4-l6  { animation: fadeIn 0.3s ease 40.2s forwards; }
+.s4-l7  { animation: fadeIn 0.3s ease 40.8s forwards; }
+.s4-l8  { animation: fadeIn 0.3s ease 41.4s forwards; }
+/* blank */
+.s4-l9  { animation: fadeIn 0.01s ease 42.5s forwards; }
+/* cost header + line */
+.s4-l10 { animation: fadeIn 0.3s ease 43s forwards; }
+.s4-l11 { animation: fadeIn 0.3s ease 43.5s forwards; }
+/* cost lines */
+.s4-l12 { animation: fadeIn 0.3s ease 44.5s forwards; }
+.s4-l13 { animation: fadeIn 0.3s ease 45.5s forwards; }
+.s4-l14 { animation: fadeIn 0.3s ease 46.5s forwards; }
+
+.t-warn   { color: #f59e0b; }
+.t-red    { color: #ef4444; }
+.t-green  { color: #22c55e; }
+.t-blue   { color: #3b82f6; }
+
+.savings {
+  animation: pulseBlue 1.5s ease-in-out 47s infinite;
+}
+
+/* === SCENE 5: The Point (55s-70s) ==================== */
+#scene5 {
+  animation: fadeIn 0.6s ease 55s forwards, fadeOut 0.6s ease 69.4s forwards;
+  gap: 48px;
+}
+.s5-line {
+  font-size: 36px;
+  display: flex;
+  gap: 60px;
+  align-items: baseline;
+  opacity: 0;
+}
+.s5-main {
+  color: #fff;
+  min-width: 500px;
+  text-align: right;
+}
+.s5-note {
+  color: #3b82f6;
+  font-size: 24px;
+}
+.s5-l1 { animation: fadeInUp 0.6s ease 56s forwards; }
+.s5-l2 { animation: fadeInUp 0.6s ease 58s forwards; }
+.s5-l3 { animation: fadeInUp 0.6s ease 60s forwards; }
+
+/* === SCENE 6: Integrations (70s-80s) ================= */
+#scene6 {
+  animation: fadeIn 0.6s ease 70s forwards, fadeOut 0.6s ease 79.4s forwards;
+  flex-direction: row;
+  gap: 32px;
+  padding: 0 120px;
+}
+.int-card {
+  background: #141414;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 28px 32px;
+  width: 520px;
+  opacity: 0;
+}
+.int-card h3 {
+  font-size: 16px;
+  color: #71717a;
+  margin-bottom: 16px;
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+.int-card pre {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #d4d4d8;
+  white-space: pre-wrap;
+}
+.int-c1 { animation: slideUp 0.5s ease 71s forwards; }
+.int-c2 { animation: slideUp 0.5s ease 71.6s forwards; }
+.int-c3 { animation: slideUp 0.5s ease 72.2s forwards; }
+
+/* === SCENE 7: CTA (80s-90s) ========================== */
+#scene7 {
+  animation: fadeIn 0.8s ease 80s forwards;
+  gap: 28px;
+}
+.s7-install {
+  font-size: 40px;
+  color: #fff;
+  background: #141414;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 20px 48px;
+  opacity: 0;
+  animation: fadeInUp 0.6s ease 81s forwards;
+}
+.s7-gh {
+  font-size: 24px;
+  color: #a1a1aa;
+  opacity: 0;
+  animation: fadeIn 0.6s ease 82.5s forwards;
+}
+.s7-stats {
+  font-size: 20px;
+  color: #52525b;
+  opacity: 0;
+  animation: fadeIn 0.6s ease 83.5s forwards;
+}
+
+/* ── Progress bar ─────────────────────────────────────── */
+#progress {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 1920px;
+  height: 3px;
+  background: #1a1a1a;
+  z-index: 100;
+}
+#progress-bar {
+  height: 100%;
+  background: #3b82f6;
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: progressFill 90s linear forwards;
+}
+
+/* ── Controls overlay ─────────────────────────────────── */
+#controls {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(20,20,20,0.7);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 8px 16px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+body:hover #controls { opacity: 1; }
+
+#controls button {
+  background: none;
+  border: none;
+  color: #a1a1aa;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+#controls button:hover { color: #fff; }
+
+#time-display {
+  font-size: 14px;
+  color: #71717a;
+  min-width: 90px;
+  text-align: center;
+}
+
+/* ── Print ────────────────────────────────────────────── */
+@media print {
+  html, body {
+    width: auto; height: auto; overflow: visible;
+  }
+  .scene {
+    position: relative;
+    opacity: 1;
+    page-break-after: always;
+    min-height: 100vh;
+  }
+  #progress, #controls { display: none; }
+  *, *::before, *::after {
+    animation: none !important;
+  }
+  .tw { width: auto !important; overflow: visible !important; }
+  .t-line, .s2-line, .s5-line, .int-card, .s7-install, .s7-gh, .s7-stats {
+    opacity: 1 !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SCENE 1: Title Card (0-5s) ═══ -->
+<div class="scene" id="scene1">
+  <div class="title">DBAR</div>
+  <div class="subtitle">Deterministic Browser Agent Runtime</div>
+  <div class="tagline">Record. Replay. Verify.</div>
+</div>
+
+<!-- ═══ SCENE 2: The Problem (5-15s) ═══ -->
+<div class="scene" id="scene2">
+  <div class="s2-line s2-l1"><span class="tw">Browser agents are booming.</span></div>
+  <div class="s2-line s2-blank1 blank"></div>
+  <div class="s2-line s2-l3"><span class="tw">browser-use: <span class="hl-stars">84,600 stars</span>. <span class="hl-money">$17M raised</span>.</span></div>
+  <div class="s2-line s2-l4"><span class="tw">Browserbase: <span class="hl-money">$67.5M raised</span>. <span class="hl-money">$300M valuation</span>.</span></div>
+  <div class="s2-line s2-l5"><span class="tw"><span class="hl-accent">97% accuracy</span> on benchmarks.</span></div>
+  <div class="s2-line s2-blank2 blank"></div>
+  <div class="s2-line s2-l6"><span class="tw">But nobody can answer one question:</span></div>
+  <div class="s2-question">"What exactly did the agent do?"</div>
+</div>
+
+<!-- ═══ SCENE 3: The Capture (15-35s) ═══ -->
+<div class="scene" id="scene3">
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot dot-red"></div>
+      <div class="terminal-dot dot-yellow"></div>
+      <div class="terminal-dot dot-green"></div>
+      <div class="terminal-title">Terminal -- capture.js</div>
+    </div>
+    <div class="terminal-body">
+      <div class="t-line s3-l1"><span class="t-prompt">$ </span><span class="tw t-cmd">npm install @pyyush/dbar playwright-core</span></div>
+      <div class="t-line s3-l2"><span class="t-output">added 2 packages in 1.2s</span></div>
+      <div class="t-line s3-l3"> </div>
+      <div class="t-line s3-l4"><span class="t-prompt">$ </span><span class="tw t-cmd">node capture.js</span></div>
+      <div class="t-line s3-l5"><span class="t-output">Navigating to books.toscrape.com...</span></div>
+      <div class="t-line s3-l6"> </div>
+      <div class="t-line s3-l7"><span class="t-output">DBAR.capture(page) -- session started</span></div>
+      <div class="t-line s3-l8"><span class="t-check">&#10003; Step 0 "homepage" captured</span></div>
+      <div class="t-line s3-l9"><span class="t-label">  DOM:  </span><span class="t-hash">c8b8cf6a07b069...c500df74</span></div>
+      <div class="t-line s3-l10"><span class="t-label">  A11y: </span><span class="t-hash">ff9d90d41fcb31...d5a58ad</span></div>
+      <div class="t-line s3-l11"><span class="t-label">  Screenshot: </span><span class="t-hash">12170f0531d769...bd4a972</span></div>
+      <div class="t-line s3-l12"> </div>
+      <div class="t-line s3-l13"><span class="t-check">&#10003; Capsule saved: books-toscrape.capsule (1,239 KB)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 4: The Replay (35-55s) ═══ -->
+<div class="scene" id="scene4">
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot dot-red"></div>
+      <div class="terminal-dot dot-yellow"></div>
+      <div class="terminal-dot dot-green"></div>
+      <div class="terminal-title">Terminal -- replay</div>
+    </div>
+    <div class="terminal-body">
+      <div class="t-line s4-l1"><span class="t-prompt">$ </span><span class="tw t-cmd">dbar replay books-toscrape.capsule --cost</span></div>
+      <div class="t-line s4-l2"> </div>
+      <div class="t-line s4-l3"><span class="t-output">Replaying capsule...</span></div>
+      <div class="t-line s4-l4"><span class="t-check">&#10003; Step 0: DOM </span><span class="t-warn">&#10007; DIVERGED</span></div>
+      <div class="t-line s4-l5"> </div>
+      <div class="t-line s4-l6"><span class="t-dim">&#8627; DOM hash changed between runs.</span></div>
+      <div class="t-line s4-l7"><span class="t-dim">  The site serves different timestamps on each load.</span></div>
+      <div class="t-line s4-l8"><span class="t-dim">  DBAR caught it in 669ms.</span></div>
+      <div class="t-line s4-l9"> </div>
+      <div class="t-line s4-l10"><span class="t-output">Cost Comparison</span></div>
+      <div class="t-line s4-l11"><span class="t-dim">───────────────────────────────────────────</span></div>
+      <div class="t-line s4-l12"><span class="t-output">browser-use eval (100 tasks):  </span><span class="t-red">$19.00</span></div>
+      <div class="t-line s4-l13"><span class="t-output">DBAR replay (100 tasks):       </span><span class="t-green">$0.00</span></div>
+      <div class="t-line s4-l14"><span class="t-output">Savings:                       </span><span class="t-blue savings">100%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 5: The Point (55-70s) ═══ -->
+<div class="scene" id="scene5">
+  <div class="s5-line s5-l1">
+    <span class="s5-main">Record what happened.</span>
+    <span class="s5-note">&#8592; capsule</span>
+  </div>
+  <div class="s5-line s5-l2">
+    <span class="s5-main">Replay to verify.</span>
+    <span class="s5-note">&#8592; determinism</span>
+  </div>
+  <div class="s5-line s5-l3">
+    <span class="s5-main">Prove it to anyone.</span>
+    <span class="s5-note">&#8592; compliance</span>
+  </div>
+</div>
+
+<!-- ═══ SCENE 6: Integrations (70-80s) ═══ -->
+<div class="scene" id="scene6">
+  <div class="int-card int-c1">
+    <h3># browser-use</h3>
+    <pre>npx ts-node capture.ts \
+  --cdp http://localhost:9222</pre>
+  </div>
+  <div class="int-card int-c2">
+    <h3># Browserbase</h3>
+    <pre>npx ts-node capture.ts \
+  --session-id $ID \
+  --api-key $KEY</pre>
+  </div>
+  <div class="int-card int-c3">
+    <h3># Any Playwright project</h3>
+    <pre>const session =
+  await DBAR.capture(page);</pre>
+  </div>
+</div>
+
+<!-- ═══ SCENE 7: CTA (80-90s) ═══ -->
+<div class="scene" id="scene7">
+  <div class="s7-install">npm install @pyyush/dbar</div>
+  <div class="s7-gh">github.com/pyyush/dbar</div>
+  <div class="s7-stats">204 tests  |  100% TypeScript  |  Apache-2.0</div>
+</div>
+
+<!-- ═══ Progress bar ═══ -->
+<div id="progress"><div id="progress-bar"></div></div>
+
+<!-- ═══ Controls overlay ═══ -->
+<div id="controls" role="toolbar" aria-label="Playback controls">
+  <button id="btn-play" aria-label="Pause playback" title="Pause">&#9208;</button>
+  <span id="time-display">0:00 / 1:30</span>
+  <button id="btn-fs" aria-label="Toggle fullscreen" title="Fullscreen">&#9974;</button>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  var startTime = Date.now();
+  var isPaused = false;
+  var pausedAt = 0;
+  var totalPaused = 0;
+
+  var btnPlay = document.getElementById("btn-play");
+  var timeDisplay = document.getElementById("time-display");
+  var btnFs = document.getElementById("btn-fs");
+
+  /** Toggle pause/play state for all CSS animations. */
+  function togglePause() {
+    if (isPaused) {
+      totalPaused += Date.now() - pausedAt;
+      document.body.classList.remove("paused");
+      btnPlay.innerHTML = "&#9208;";
+      btnPlay.setAttribute("aria-label", "Pause playback");
+      isPaused = false;
+    } else {
+      pausedAt = Date.now();
+      document.body.classList.add("paused");
+      btnPlay.innerHTML = "&#9654;";
+      btnPlay.setAttribute("aria-label", "Resume playback");
+      isPaused = true;
+    }
+  }
+
+  btnPlay.addEventListener("click", togglePause);
+
+  /** Toggle fullscreen mode for the document element. */
+  btnFs.addEventListener("click", function() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(function() {
+        /* Fullscreen not supported or denied by user — no action needed. */
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  /* Keyboard shortcut: space to toggle pause */
+  document.addEventListener("keydown", function(e) {
+    if (e.code === "Space") {
+      e.preventDefault();
+      togglePause();
+    }
+  });
+
+  /** Update the elapsed time indicator once per second. */
+  function updateTime() {
+    if (!isPaused) {
+      var elapsed = Math.floor((Date.now() - startTime - totalPaused) / 1000);
+      if (elapsed > 90) elapsed = 90;
+      var mins = Math.floor(elapsed / 60);
+      var secs = elapsed % 60;
+      timeDisplay.textContent = mins + ":" + (secs < 10 ? "0" : "") + secs + " / 1:30";
+    }
+    requestAnimationFrame(updateTime);
+  }
+  requestAnimationFrame(updateTime);
+})();
+</script>
+</body>
+</html>
