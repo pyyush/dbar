@@ -1,141 +1,91 @@
 """
-DBAR + browser-use integration example.
+DBAR + browser-use snapshot capture example.
 
-Demonstrates how to run a browser-use agent with DBAR deterministic capture,
-then replay the capsule to verify determinism.
+Runs a browser-use agent with DBAR capturing page state snapshots at each
+step boundary via the on_step_end lifecycle hook.
 
 Prerequisites:
-  pip install browser-use langchain-openai
+  pip install browser-use==0.12.5 langchain-openai
   cd integrations/browser-use && npm install
+
+Environment:
+  OPENAI_API_KEY must be set (or swap ChatOpenAI for ChatAnthropic + ANTHROPIC_API_KEY)
 
 Usage:
   python example.py
 """
 
 import asyncio
-import os
 import subprocess
 import time
 from pathlib import Path
 
-# browser-use imports (install via: pip install browser-use)
-from browser_use import Agent, Browser, BrowserConfig
+from browser_use import Agent, Browser
 from langchain_openai import ChatOpenAI
 
-# Directory where capsules are written
-CAPSULES_DIR = Path(__file__).parent / "capsules"
-STEP_SIGNAL = Path(__file__).parent / ".dbar-step"
-FINISH_SIGNAL = Path(__file__).parent / ".dbar-finish"
+# Pin: browser-use==0.12.5, cdp-use==1.4.5
+# browser-use v0.12.5 dropped BrowserConfig — use Browser() kwargs directly.
+
+SIGNAL_DIR = Path(__file__).parent
+SNAPSHOTS_DIR = SIGNAL_DIR / "dbar-snapshots"
+CDP_PORT = 9222
 
 
-def signal_step(label: str) -> None:
-    """Write a step signal file for the DBAR capture process."""
-    STEP_SIGNAL.write_text(label)
-    # Allow the capture process time to detect and consume the signal.
-    time.sleep(0.5)
-
-
-def signal_finish() -> None:
-    """Write a finish signal file for the DBAR capture process."""
-    FINISH_SIGNAL.write_text("done")
+async def on_step_end(agent) -> None:
+    """Signal DBAR sidecar to capture state at this step boundary."""
+    step_num = getattr(agent.state, "step_count", 0)
+    (SIGNAL_DIR / ".dbar-step").write_text(f"step-{step_num}")
+    # Allow the capture sidecar time to detect and process the signal.
+    await asyncio.sleep(0.5)
 
 
 async def main() -> None:
-    # -------------------------------------------------------------------------
-    # Step 1: Launch browser-use with remote debugging enabled
-    # -------------------------------------------------------------------------
-    CDP_PORT = 9222
+    # Launch browser with remote debugging so DBAR can attach.
+    browser = Browser(headless=False)
 
-    browser = Browser(
-        config=BrowserConfig(
-            chrome_instance_path=f"http://localhost:{CDP_PORT}",
-            # Or let browser-use launch Chrome with remote debugging:
-            # extra_chromium_args=[f"--remote-debugging-port={CDP_PORT}"],
-        )
+    agent = Agent(
+        task="Go to books.toscrape.com and find the price of the first Travel book",
+        llm=ChatOpenAI(model="gpt-4o"),  # requires OPENAI_API_KEY
+        browser=browser,
     )
 
-    # -------------------------------------------------------------------------
-    # Step 2: Start the DBAR capture process in the background
-    # -------------------------------------------------------------------------
-    print("[example] Starting DBAR capture process...")
-    capture_process = subprocess.Popen(
+    # Start DBAR capture sidecar (connects to same Chrome via CDP).
+    # In production, start this before the agent and wait for "Ready" output.
+    print("[example] Starting DBAR capture sidecar...")
+    dbar_proc = subprocess.Popen(
         [
-            "node",
-            "--loader",
-            "ts-node/esm",
-            str(Path(__file__).parent / "capture.ts"),
+            "npx",
+            "tsx",
+            str(SIGNAL_DIR / "capture.ts"),
             f"http://localhost:{CDP_PORT}",
-            str(CAPSULES_DIR),
+            str(SNAPSHOTS_DIR),
         ],
-        cwd=str(Path(__file__).parent),
+        cwd=str(SIGNAL_DIR),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
 
-    # Give the capture process time to connect.
-    time.sleep(2)
+    # Give the sidecar time to connect via CDP.
+    time.sleep(3)
 
-    # -------------------------------------------------------------------------
-    # Step 3: Run the browser-use agent
-    # -------------------------------------------------------------------------
-    print("[example] Running browser-use agent...")
-    llm = ChatOpenAI(model="gpt-4o")
-
-    agent = Agent(
-        task="Go to news.ycombinator.com and find the top story title",
-        llm=llm,
-        browser=browser,
+    print("[example] Running agent...")
+    result = await agent.run(
+        max_steps=20,
+        on_step_end=on_step_end,
     )
 
-    # Run the agent. Signal DBAR at key points.
-    signal_step("before-agent-run")
-    result = await agent.run()
-    signal_step("after-agent-run")
-
+    # Signal DBAR to finish and write manifest.
+    (SIGNAL_DIR / ".dbar-finish").touch()
     print(f"[example] Agent result: {result}")
 
-    # -------------------------------------------------------------------------
-    # Step 4: Signal DBAR to finish and produce the capsule
-    # -------------------------------------------------------------------------
-    print("[example] Signaling DBAR to finish...")
-    signal_finish()
-
-    # Wait for the capture process to complete.
-    capture_process.wait(timeout=30)
-
-    if capture_process.stdout:
-        output = capture_process.stdout.read().decode()
-        print(f"[example] Capture output:\n{output}")
-
-    # -------------------------------------------------------------------------
-    # Step 5: Find the capsule and replay it
-    # -------------------------------------------------------------------------
-    capsules = sorted(CAPSULES_DIR.glob("capsule-*.json"))
-    if not capsules:
-        print("[example] No capsule found. Capture may have failed.")
-        return
-
-    latest_capsule = capsules[-1]
-    print(f"[example] Replaying capsule: {latest_capsule}")
-
-    replay_result = subprocess.run(
-        [
-            "node",
-            "--loader",
-            "ts-node/esm",
-            str(Path(__file__).parent / "replay.ts"),
-            str(latest_capsule),
-        ],
-        cwd=str(Path(__file__).parent),
-        capture_output=True,
-        text=True,
-    )
-
-    print(f"[example] Replay stdout (JSON):\n{replay_result.stdout}")
-    print(f"[example] Replay stderr:\n{replay_result.stderr}")
-    print(f"[example] Replay exit code: {replay_result.returncode}")
+    # Wait for sidecar to write snapshots.
+    dbar_proc.wait(timeout=15)
+    if dbar_proc.stdout:
+        output = dbar_proc.stdout.read().decode()
+        print(f"[example] DBAR output:\n{output}")
 
     await browser.close()
+    print(f"[example] Done. Check {SNAPSHOTS_DIR}/ for captured snapshots.")
 
 
 if __name__ == "__main__":

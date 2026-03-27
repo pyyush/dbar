@@ -1,14 +1,16 @@
 {
   "name": "@pyyush/dbar-browser-use",
-  "version": "0.1.0",
-  "description": "DBAR deterministic capture/replay bridge for browser-use agent sessions",
+  "version": "0.2.0",
+  "description": "DBAR snapshot capture sidecar for browser-use agent sessions",
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "tsc",
     "capture": "node --loader ts-node/esm capture.ts",
-    "replay": "node --loader ts-node/esm replay.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@pyyush/dbar": "^0.1.0"
@@ -19,7 +21,8 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "ts-node": "^10.9.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
