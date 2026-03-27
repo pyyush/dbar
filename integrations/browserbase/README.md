@@ -1,149 +1,139 @@
 # DBAR + Browserbase Integration
 
-Deterministic capture and replay for [Browserbase](https://www.browserbase.com/) cloud browser sessions.
+Deterministic capture on [Browserbase](https://www.browserbase.com/) cloud browsers, replay locally.
 
-Your Browserbase agent ran in the cloud. DBAR gives you a replayable receipt of exactly what happened.
+**DBAR owns the Browserbase session.** Unlike the browser-use integration (where DBAR is a sidecar observing someone else's browser), here DBAR controls the session end-to-end. This means full deterministic capture works: virtual time, network recording, and replayable capsules.
 
-## Architecture
-
-```
-Browserbase (cloud browser)              DBAR capture (Node.js)
-    |                                        |
-    v                                        v
-Cloud Browser  <── CDP (WebSocket) ──>  DBAR.capture(page)
-(session wsUrl)                              |
-    |                                    session.step("label")
-    v                                        |
-Agent actions                            session.finish()
-(Stagehand, Playwright, etc.)                |
-                                         capsule.json
-                                             |
-                                    Local browser (replay)
-                                         capsule verified
-```
-
-DBAR connects to the same cloud browser your agent controls via CDP. It does not launch a separate browser or interfere with agent actions. Capsules are replayed locally to prove the cloud session is deterministically reproducible.
+| | browser-use integration | Browserbase integration |
+|---|---|---|
+| Who owns the browser? | browser-use (agent) | DBAR |
+| Full determinism? | No (CDP conflict) | Yes |
+| Virtual time? | No | Yes |
+| Network recording? | No | Yes |
+| Replayable capsule? | No (snapshots only) | Yes |
+| Value prop | Audit trail of page state | Full deterministic record + replay |
 
 ## Setup
-
-### 1. Install dependencies
 
 ```bash
 cd integrations/browserbase
 npm install
 ```
 
-### 2. Set Browserbase credentials
+### Credentials
 
-The API key must be provided via environment variable only. Do not pass it as
-a CLI argument.
+Auth is via environment variables only. Never pass secrets as CLI flags.
 
 ```bash
 export BROWSERBASE_API_KEY=your-api-key
 export BROWSERBASE_PROJECT_ID=your-project-id
 ```
 
-### 3. Capture a session
+### Pinned Versions
 
-**Option A: Via Browserbase session ID** (recommended)
+- `@browserbasehq/sdk` ^2.6.0 (uses `session.connectUrl` for CDP)
+- `playwright-core` >=1.40.0 (peer dependency)
 
-Start your Browserbase session, then attach DBAR:
+## Capture
 
-```bash
-node --loader ts-node/esm capture.ts --session-id <session-id> --output-dir ./capsules
-```
-
-**Option B: Via direct CDP URL**
-
-If you already have the WebSocket CDP URL:
+Record a page with full determinism in a Browserbase cloud browser:
 
 ```bash
-node --loader ts-node/esm capture.ts --cdp-url ws://connect.browserbase.com/... --output-dir ./capsules
+npx tsx capture.ts --url https://books.toscrape.com/ --steps 3 --output ./capsules/demo.capsule
 ```
 
-Signal DBAR at meaningful boundaries from your agent code:
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--url` | URL to navigate to and capture | (required) |
+| `--steps` | Number of steps to capture | 1 |
+| `--output` | Capsule output path | `./capsules/<timestamp>.capsule` |
 
-```bash
-# Trigger a step capture (content = label)
-echo "after-login" > .dbar-step
+The capture script:
+1. Creates a Browserbase session via the SDK
+2. Connects via `session.connectUrl` (CDP WebSocket)
+3. Navigates to the target URL
+4. Runs DBAR.capture() with full virtual time + network recording
+5. Captures the specified number of steps
+6. Saves the capsule to disk
+7. Closes the session
 
-# When the agent is done, signal finish
-echo "done" > .dbar-finish
-```
-
-The capsule is written to `./capsules/capsule-<timestamp>.json`.
+The `connectUrl` contains the API key as a query parameter. All log output masks this value automatically.
 
 ## Replay
 
-Replay a captured capsule locally to verify determinism:
+Replay a captured capsule on a local browser. No Browserbase credentials needed.
 
 ```bash
-node --loader ts-node/esm replay.ts ./capsules/capsule-2026-03-26T10-00-00-000Z.json
+npx tsx replay.ts ./capsules/demo.capsule
+npx tsx replay.ts ./capsules/demo.capsule --json
 ```
 
-The replay result (JSON) is printed to stdout. Exit code 0 means all steps matched; exit code 1 means divergences were detected.
+| Flag | Description | Default |
+|------|-------------|---------|
+| `<capsule-path>` | Path to capsule file | (required) |
+| `--json` | Output structured JSON to stdout | false |
 
-Replay always runs on a **local** browser, not on Browserbase. That is the point: record in the cloud, verify locally.
+Exit codes: 0 = all steps matched, 1 = divergences detected, 2 = fatal error.
+
+Set `DBAR_NO_SANDBOX=1` to add `--no-sandbox` to the local Chromium launch (CI environments only).
+
+## Example
+
+Full end-to-end demo: create session, browse books.toscrape.com, capture 3 steps, replay locally.
+
+```bash
+npx tsx example.ts
+```
 
 ## Programmatic Usage
 
-You can also use DBAR directly in your TypeScript code instead of the file-based signaling scripts:
-
 ```typescript
+import Browserbase from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { DBAR, serializeCapsuleArchive } from "@pyyush/dbar";
 
-// Connect to your Browserbase session's CDP endpoint
-const browser = await chromium.connectOverCDP(wsUrl);
+const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
+
+const session = await bb.sessions.create({
+  projectId: process.env.BROWSERBASE_PROJECT_ID!,
+});
+
+const browser = await chromium.connectOverCDP(session.connectUrl);
 const page = browser.contexts()[0].pages()[0];
 
-// Capture
-const session = await DBAR.capture(page);
-await session.step("after-login");
-await session.step("after-action");
-const archive = await session.finish();
+// DBAR owns the session — full determinism
+const dbar = await DBAR.capture(page);
+await page.goto("https://example.com");
+await dbar.step("homepage");
+const archive = await dbar.finish();
 
-// Save the capsule
-const serialized = serializeCapsuleArchive(archive);
-writeFileSync("capsule.json", serialized);
+// Save capsule
+const capsule = serializeCapsuleArchive(archive);
 
-// Later: replay locally
+// Later: replay locally (no Browserbase needed)
 const result = await DBAR.replay(freshPage, archive);
 console.log(result.replaySuccessRate); // 1.0
 ```
 
-See `example.ts` for a complete working example.
-
-## File-Based Signaling
-
-| Signal file    | Effect                                              |
-| -------------- | --------------------------------------------------- |
-| `.dbar-step`   | Captures a step. File content is used as the label. |
-| `.dbar-finish` | Ends the session and writes the capsule to disk.    |
-
-Signal files are consumed (deleted) after being read. The capture process polls every 250ms.
-
 ## Security Notice
 
-Capsules contain full network response bodies, cookies, localStorage values,
-and screenshots. These may include sensitive data (session tokens, PII,
-financial information). Handle capsule files with the same care as database
-backups.
+Capsules contain full network response bodies, cookies, localStorage values, and screenshots. These may include session tokens, PII, or other sensitive data. Treat capsule files with the same care as database backups.
 
 - Do not commit capsules to public repositories
-- Use DBAR's header redaction (enabled by default for auth headers)
-- Consider using `--no-screenshots` for sensitive workflows
+- DBAR redacts auth headers by default
 - Review capsule contents before sharing
 
 ## Files
 
-| File            | Description                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| `capture.ts`    | Node.js script: CDP attach via Browserbase API or direct URL, capture session, signal loop |
-| `replay.ts`     | Node.js script: load capsule, replay locally, output JSON                                  |
-| `example.ts`    | End-to-end TypeScript example (create session, capture, replay)                            |
-| `package.json`  | Node.js dependencies                                                                       |
-| `tsconfig.json` | TypeScript configuration                                                                   |
+| File | Description |
+|------|-------------|
+| `capture.ts` | CLI: create Browserbase session, capture deterministic capsule |
+| `replay.ts` | CLI: replay capsule locally, output results |
+| `example.ts` | End-to-end demo (capture on Browserbase, replay locally) |
+| `helpers.ts` | Pure helper functions (arg parsing, URL masking) |
+| `package.json` | Dependencies (pins @browserbasehq/sdk ^2.6.0) |
+| `tsconfig.json` | TypeScript configuration |
+| `__tests__/` | Unit tests for helper functions |
 
 ## License
 

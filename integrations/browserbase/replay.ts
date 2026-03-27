@@ -1,14 +1,13 @@
 /**
- * DBAR Replay Script for Browserbase capsules
+ * DBAR Local Replay for Browserbase Capsules
  *
- * Takes a capsule file, launches a fresh LOCAL browser, replays the session,
- * and outputs the ReplayResult as JSON to stdout.
+ * Replays a capsule recorded via Browserbase on a LOCAL browser.
+ * This is the value prop: "record in cloud, verify locally."
  *
- * Replay always runs locally — that is the point: record in the cloud (Browserbase),
- * verify locally that the session is deterministically reproducible.
+ * No Browserbase credentials or connection needed — replay is fully local.
  *
  * Usage:
- *   node --loader ts-node/esm replay.ts <capsule-path>
+ *   npx tsx replay.ts <capsule-path> [--json]
  *
  * Exit codes:
  *   0 = replay succeeded (all steps matched)
@@ -23,19 +22,17 @@ import { resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { DBAR, deserializeCapsuleArchive } from "@pyyush/dbar";
 
-function parseArgs(): { capsulePath: string } {
-  const raw = process.argv[2];
-  if (!raw) {
-    console.error("Usage: replay.ts <capsule-path>");
-    console.error("  capsule-path: Path to a capsule JSON file produced by capture.ts");
-    process.exit(2);
-  }
-  return { capsulePath: resolve(raw) };
-}
+import { parseReplayArgs } from "./helpers.js";
 
 async function main(): Promise<void> {
-  const { capsulePath } = parseArgs();
+  const args = parseReplayArgs(process.argv.slice(2));
+  if (args.error) {
+    console.error(`[dbar-replay] Error: ${args.error}`);
+    console.error("[dbar-replay] Usage: npx tsx replay.ts <capsule-path> [--json]");
+    process.exit(2);
+  }
 
+  const capsulePath = resolve(args.capsulePath!);
   console.error(`[dbar-replay] Loading capsule from: ${capsulePath}`);
 
   let serialized: string;
@@ -51,12 +48,19 @@ async function main(): Promise<void> {
   const manifest = archive.manifest;
 
   console.error(`[dbar-replay] Capsule ID: ${manifest.id}`);
-  console.error(`[dbar-replay] Steps: ${manifest.steps.length}, Requests: ${manifest.networkTranscript.entries.length}`);
+  console.error(
+    `[dbar-replay] Steps: ${manifest.steps.length}, ` +
+    `Requests: ${manifest.networkTranscript.entries.length}`
+  );
 
   console.error("[dbar-replay] Launching local browser for replay...");
+  const noSandbox = process.env["DBAR_NO_SANDBOX"] === "1";
   const browser = await chromium.launch({
     headless: true,
-    args: ["--disable-gpu", ...(process.env["DBAR_NO_SANDBOX"] === "1" ? ["--no-sandbox"] : [])],
+    args: [
+      "--disable-gpu",
+      ...(noSandbox ? ["--no-sandbox"] : []),
+    ],
   });
 
   const context = await browser.newContext({
@@ -74,20 +78,19 @@ async function main(): Promise<void> {
   console.error("[dbar-replay] Starting replay...");
   const result = await DBAR.replay(page, archive);
 
-  // Output the structured result to stdout (stdout is reserved for machine-readable output).
-  const output = JSON.stringify(result, null, 2);
-  process.stdout.write(output + "\n");
+  if (args.json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  } else {
+    console.log(`[dbar-replay] Replay complete.`);
+    console.log(`[dbar-replay]   Success: ${result.success}`);
+    console.log(`[dbar-replay]   RSR: ${(result.replaySuccessRate * 100).toFixed(1)}%`);
+    console.log(`[dbar-replay]   DVR: ${(result.determinismViolationRate * 100).toFixed(1)}%`);
+    console.log(`[dbar-replay]   Divergences: ${result.divergences.length}`);
+    console.log(`[dbar-replay]   Overhead: ${result.overheadMs}ms`);
 
-  // Human-readable summary on stderr.
-  console.error(`[dbar-replay] Replay complete.`);
-  console.error(`[dbar-replay]   Success: ${result.success}`);
-  console.error(`[dbar-replay]   RSR: ${(result.replaySuccessRate * 100).toFixed(1)}%`);
-  console.error(`[dbar-replay]   DVR: ${(result.determinismViolationRate * 100).toFixed(1)}%`);
-  console.error(`[dbar-replay]   Divergences: ${result.divergences.length}`);
-  console.error(`[dbar-replay]   Overhead: ${result.overheadMs}ms`);
-
-  if (result.timeToDivergence !== undefined) {
-    console.error(`[dbar-replay]   First divergence at step: ${result.timeToDivergence}`);
+    if (result.timeToDivergence !== undefined) {
+      console.log(`[dbar-replay]   First divergence at step: ${result.timeToDivergence}`);
+    }
   }
 
   await browser.close();

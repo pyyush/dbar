@@ -1,25 +1,28 @@
 {
   "name": "@pyyush/dbar-browserbase",
-  "version": "0.1.0",
-  "description": "DBAR deterministic capture/replay bridge for Browserbase cloud browser sessions",
+  "version": "0.2.0",
+  "description": "DBAR + Browserbase: deterministic capture in the cloud, replay locally",
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "capture": "node --loader ts-node/esm capture.ts",
-    "replay": "node --loader ts-node/esm replay.ts"
+    "capture": "npx tsx capture.ts",
+    "replay": "npx tsx replay.ts",
+    "example": "npx tsx example.ts",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@pyyush/dbar": "^0.1.0"
+    "@pyyush/dbar": "^0.1.0",
+    "@browserbasehq/sdk": "^2.6.0"
   },
   "peerDependencies": {
     "playwright-core": ">=1.40.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.7.0"
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
