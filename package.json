@@ -1,6 +1,6 @@
 {
   "name": "@pyyush/dbar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DBAR — Deterministic Browser Agent Runtime. Replayable, verifiable browser executions.",
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
