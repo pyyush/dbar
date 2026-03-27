@@ -601,7 +601,7 @@ export class DBAR {
       ) {
         divergences.push({
           step: expectedStep.index,
-          type: "dom_mismatch",
+          type: "screenshot_mismatch",
           details: "screenshot hash mismatch (advisory)",
           expected: expectedStep.observables.screenshotHash,
           actual: liveObservables.screenshotHash,
