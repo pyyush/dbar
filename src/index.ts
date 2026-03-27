@@ -90,4 +90,4 @@ export { TraceTimeline, type TraceEntry } from "./telemetry/trace.js";
 export { Coordinator, type CaptureOptions, type CaptureSessionState } from "./coordinator.js";
 
 // SDK
-export { DBAR, CaptureSession, type ReplayOptions } from "./sdk.js";
+export { DBAR, CaptureSession, ReplaySession, type ReplayOptions, type ReplayStepResult } from "./sdk.js";

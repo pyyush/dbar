@@ -16,9 +16,9 @@ import { chromium, type Page, type Browser, type BrowserContext } from "playwrig
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { DBAR, type CaptureSession } from "../src/sdk.js";
+import { DBAR, type CaptureSession, type ReplaySession } from "../src/sdk.js";
 import type { CapsuleArchive } from "../src/capsule/builder.js";
-import type { StepSnapshot } from "../src/capsule/types.js";
+import type { StepSnapshot, ReplayResult } from "../src/capsule/types.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -117,31 +117,6 @@ async function humanScroll(page: Page, deltaY: number, steps: number = 10): Prom
 // ---------------------------------------------------------------------------
 // Dashboard update helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Patch Playwright's Page to include an accessibility property so DBAR's
- * captureAccessibilitySnapshot works on modern Playwright versions that
- * removed the deprecated page.accessibility API.
- */
-function patchPageAccessibility(page: Page): void {
-  const p = page as unknown as Record<string, unknown>;
-  if (!p["accessibility"]) {
-    p["accessibility"] = {
-      async snapshot() {
-        try {
-          const aria = await page.locator("body").ariaSnapshot();
-          return {
-            role: "WebArea",
-            name: await page.title(),
-            children: [{ role: "text", name: aria?.substring(0, 500) ?? "" }],
-          };
-        } catch {
-          return { role: "WebArea", name: "page", children: [] };
-        }
-      },
-    };
-  }
-}
 
 /** Set the session status indicator on the dashboard. */
 async function setSessionStatus(
@@ -310,7 +285,6 @@ async function main(): Promise<void> {
   });
 
   const mainPage: Page = await mainContext.newPage();
-  patchPageAccessibility(mainPage);
 
   // Dashboard window: open in same browser as a separate page
   // Playwright opens new pages in the same window, so we use a popup approach
@@ -448,24 +422,49 @@ async function main(): Promise<void> {
   await setPhase(dashPage, "Replaying capsule...");
   await setSessionStatus(dashPage, "replaying...", "replaying");
 
-  // Replay in the same page (or a new tab)
+  // Replay in a new tab — use startReplay + same navigation actions as capture
   const replayPage: Page = await mainContext.newPage();
-  patchPageAccessibility(replayPage);
 
   try {
-    const replayResult = await DBAR.replay(replayPage, archive);
+    const rs: ReplaySession = await DBAR.startReplay(replayPage, archive, {
+      unmatchedRequestPolicy: "continue",
+    });
 
-    for (const step of archive.manifest.steps) {
-      const label = step.label ?? `step-${step.index}`;
-      const stepDiverged = replayResult.divergences.some((d) => d.step === step.index);
-      await addReplayStep(dashPage, step.index, label, !stepDiverged);
-      await humanDelay(800);
-    }
+    // Replay step 0: navigate to homepage (same as capture)
+    await replayPage.goto(TARGET_URL, { waitUntil: "networkidle" });
+    await sleep(500);
+    const r0 = await rs.step();
+    await addReplayStep(dashPage, 0, "homepage", r0.matched);
+    await humanDelay(800);
 
+    // Replay step 1: click Travel category
+    await replayPage.click('a[href*="travel"]');
+    await replayPage.waitForLoadState("networkidle");
+    await sleep(500);
+    const r1 = await rs.step();
+    await addReplayStep(dashPage, 1, "category-travel", r1.matched);
+    await humanDelay(800);
+
+    // Replay step 2: click first book
+    await replayPage.click("article.product_pod h3 a");
+    await replayPage.waitForLoadState("networkidle");
+    await sleep(500);
+    const r2 = await rs.step();
+    await addReplayStep(dashPage, 2, "book-detail", r2.matched);
+    await humanDelay(800);
+
+    // Replay step 3: add to cart
+    await replayPage.click("button.btn-primary");
+    await replayPage.waitForLoadState("networkidle");
+    await sleep(500);
+    const r3 = await rs.step();
+    await addReplayStep(dashPage, 3, "add-to-cart", r3.matched);
+    await humanDelay(800);
+
+    const replayResult: ReplayResult = await rs.finish();
     console.log(`  Replay success rate: ${(replayResult.replaySuccessRate * 100).toFixed(0)}%`);
   } catch (err) {
     console.error("Replay failed:", err);
-    // Show what we can -- mark all steps as diverged
     for (const step of archive.manifest.steps) {
       const label = step.label ?? `step-${step.index}`;
       await addReplayStep(dashPage, step.index, label, false);

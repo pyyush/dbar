@@ -8,9 +8,11 @@ import type { InitialState } from "../capsule/types.js";
 
 // -- DOM snapshot tests --
 
-function createMockCDPSessionForDOM(snapshotData: unknown) {
+function createMockCDPSessionForDOM(snapshotData: unknown, outerHTML = "<html><body>test</body></html>") {
   return {
     send: vi.fn().mockImplementation((method: string) => {
+      if (method === "DOM.getDocument") return Promise.resolve({ root: { nodeId: 1 } });
+      if (method === "DOM.getOuterHTML") return Promise.resolve({ outerHTML });
       if (method === "DOMSnapshot.enable") return Promise.resolve();
       if (method === "DOMSnapshot.captureSnapshot") return Promise.resolve(snapshotData);
       return Promise.resolve();
@@ -31,33 +33,35 @@ describe("captureDOMSnapshot", () => {
   });
 
   it("shouldReturnSnapshotWithDeterministicHash", async () => {
-    // Given a CDP session returning a known snapshot
+    // Given a CDP session returning a known snapshot and HTML
     const data = { documents: [{ nodes: [1, 2] }], strings: ["a", "b"] };
-    const cdp = createMockCDPSessionForDOM(data);
+    const html = "<html><body>hello</body></html>";
+    const cdp = createMockCDPSessionForDOM(data, html);
 
     // When capturing
     const result = await captureDOMSnapshot(cdp as any);
 
-    // Then the hash is a valid SHA-256 hex string
+    // Then the hash is a valid SHA-256 hex string based on outerHTML
     expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
     expect(result.snapshot).toEqual(data);
+    expect(result.serialized).toBe(html);
 
-    // And the hash matches manual computation of the serialized form
-    const expectedHash = createHash("sha256").update(result.serialized).digest("hex");
+    // And the hash matches manual computation of the HTML
+    const expectedHash = createHash("sha256").update(html).digest("hex");
     expect(result.hash).toBe(expectedHash);
   });
 
-  it("shouldProduceSameHashForSameData", async () => {
-    // Given two CDP sessions returning identical data
-    const data = { zebra: 1, alpha: 2 };
-    const cdp1 = createMockCDPSessionForDOM(data);
-    const cdp2 = createMockCDPSessionForDOM({ zebra: 1, alpha: 2 });
+  it("shouldProduceSameHashForSameHTML", async () => {
+    // Given two CDP sessions returning different snapshot data but same HTML
+    const html = "<html><body>test</body></html>";
+    const cdp1 = createMockCDPSessionForDOM({ zebra: 1 }, html);
+    const cdp2 = createMockCDPSessionForDOM({ alpha: 2 }, html);
 
     // When capturing both
     const r1 = await captureDOMSnapshot(cdp1 as any);
     const r2 = await captureDOMSnapshot(cdp2 as any);
 
-    // Then hashes are identical
+    // Then hashes are identical (based on HTML, not CDP snapshot)
     expect(r1.hash).toBe(r2.hash);
   });
 
@@ -72,7 +76,7 @@ describe("captureDOMSnapshot", () => {
     expect(cdp.send).toHaveBeenCalledWith("DOMSnapshot.captureSnapshot", {
       computedStyles: ["display", "visibility", "opacity", "position"],
       includePaintOrder: false,
-      includeDOMRects: true,
+      includeDOMRects: false,
     });
   });
 });
@@ -131,11 +135,11 @@ describe("captureAccessibilitySnapshot", () => {
     // Given a page whose accessibility tree is null (empty page)
     const page = createMockPageForA11y(null);
 
-    // When capturing
+    // When capturing (null from strategy 1 triggers fallback to strategy 3,
+    // which fails on the mock → falls through to the empty tree fallback)
     const result = await captureAccessibilitySnapshot(page as any);
 
-    // Then it returns a hash of "null"
-    expect(result.tree).toBeNull();
+    // Then it returns a valid hash (from the fallback tree)
     expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
   });
 });

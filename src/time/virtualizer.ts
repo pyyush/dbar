@@ -107,6 +107,19 @@ export class TimeVirtualizer {
   }
 
   /**
+   * Suspend virtual time control — lets time advance normally with no budget.
+   * Use this between step boundaries so that page.goto() and
+   * waitForLoadState("networkidle") work without hanging.
+   */
+  async suspend(): Promise<void> {
+    this.currentPolicy = "advance";
+    // Send "advance" WITHOUT a budget so virtual time runs indefinitely
+    // (unlike setPolicy which always adds stepBudgetMs for non-pause policies)
+    const params: Record<string, unknown> = { policy: "advance" };
+    await this.cdpSession.send("Emulation.setVirtualTimePolicy" as any, params as any);
+  }
+
+  /**
    * Wait for network quiescence or timeout.
    * @returns `{ quiescent: true }` if all network activity settled,
    *          `{ quiescent: false }` if the timeout was reached.
