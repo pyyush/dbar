@@ -1,25 +1,30 @@
-# DBAR + browser-use Integration
+# DBAR + browser-use
 
-Deterministic capture and replay for [browser-use](https://github.com/browser-use/browser-use) agent sessions.
+Record browser sessions deterministically alongside browser-use agents.
 
-browser-use is a Python framework that runs AI agents on Playwright browsers. This bridge connects DBAR's capture/replay engine to browser-use's running browser via CDP, producing portable determinism capsules you can replay offline to verify agent behavior.
+## How It Works
 
-## Architecture
+DBAR captures browser sessions using its own Playwright/CDP instance. It does
+**not** attach to browser-use's browser process -- browser-use uses raw CDP
+(`cdp-use`), and two CDP clients cannot safely share the Fetch domain.
 
-```
-browser-use (Python)                    DBAR capture (Node.js)
-    |                                       |
-    v                                       v
-Playwright Browser  <── CDP attach ──>  DBAR.capture(page)
-(--remote-debugging-port=9222)              |
-    |                                   session.step("label")
-    v                                       |
-Agent actions                           session.finish()
-                                            |
-                                        capsule.json
-```
+Instead, DBAR runs a parallel capture:
 
-DBAR attaches to the same browser that browser-use controls. It does not launch a separate browser or interfere with agent actions. Communication between the Python agent and the Node.js capture process uses simple file-based signals.
+1. Your browser-use agent navigates a website in its own browser
+2. DBAR's capture script navigates the same URLs in a separate headless browser
+3. DBAR records the page state (DOM, network, screenshots) at each step
+4. The capsule captures what the page looked like -- not the agent's actions
+
+This gives you a deterministic record of the website's behavior, which you
+can replay to verify that the site hasn't changed between runs.
+
+## Limitations
+
+- DBAR does NOT record browser-use's internal actions (clicks, typing, etc.)
+- DBAR captures a parallel session, not the agent's actual session
+- Step boundaries are manual (you signal when to capture via files)
+- For true agent-action recording, DBAR works best with Playwright-based
+  agents where it wraps the same page the agent controls
 
 ## Setup
 
@@ -33,23 +38,7 @@ pip install browser-use langchain-openai
 npm install
 ```
 
-### 2. Launch browser-use with remote debugging
-
-Configure browser-use to expose a CDP endpoint:
-
-```python
-from browser_use import Browser, BrowserConfig
-
-browser = Browser(
-    config=BrowserConfig(
-        chrome_instance_path="http://localhost:9222",
-    )
-)
-```
-
-Or launch Chrome manually with `--remote-debugging-port=9222`.
-
-### 3. Run DBAR capture alongside your agent
+### 2. Run DBAR capture alongside your agent
 
 In one terminal, start the capture process:
 
@@ -87,6 +76,18 @@ The replay result (JSON) is printed to stdout. Exit code 0 means all steps match
 | `.dbar-finish` | Ends the session and writes the capsule to disk.    |
 
 Signal files are consumed (deleted) after being read. The capture process polls every 250ms.
+
+## Security Notice
+
+Capsules contain full network response bodies, cookies, localStorage values,
+and screenshots. These may include sensitive data (session tokens, PII,
+financial information). Handle capsule files with the same care as database
+backups.
+
+- Do not commit capsules to public repositories
+- Use DBAR's header redaction (enabled by default for auth headers)
+- Consider using `--no-screenshots` for sensitive workflows
+- Review capsule contents before sharing
 
 ## Files
 

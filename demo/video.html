@@ -483,9 +483,9 @@ body:hover #controls { opacity: 1; }
 <div class="scene" id="scene2">
   <div class="s2-line s2-l1"><span class="tw">Browser agents are booming.</span></div>
   <div class="s2-line s2-blank1 blank"></div>
-  <div class="s2-line s2-l3"><span class="tw">browser-use: <span class="hl-stars">84,600 stars</span>. <span class="hl-money">$17M raised</span>.</span></div>
+  <div class="s2-line s2-l3"><span class="tw">browser-use: <span class="hl-stars">84K+ stars</span>. <span class="hl-money">$17M raised</span>.</span></div>
   <div class="s2-line s2-l4"><span class="tw">Browserbase: <span class="hl-money">$67.5M raised</span>. <span class="hl-money">$300M valuation</span>.</span></div>
-  <div class="s2-line s2-l5"><span class="tw"><span class="hl-accent">97% accuracy</span> on benchmarks.</span></div>
+  <div class="s2-line s2-l5"><span class="tw"><span class="hl-accent">97% on Online-Mind2Web</span> (89.1% on WebVoyager).</span></div>
   <div class="s2-line s2-blank2 blank"></div>
   <div class="s2-line s2-l6"><span class="tw">But nobody can answer one question:</span></div>
   <div class="s2-question">"What exactly did the agent do?"</div>
@@ -535,13 +535,13 @@ body:hover #controls { opacity: 1; }
       <div class="t-line s4-l5"> </div>
       <div class="t-line s4-l6"><span class="t-dim">&#8627; DOM hash changed between runs.</span></div>
       <div class="t-line s4-l7"><span class="t-dim">  The site serves different timestamps on each load.</span></div>
-      <div class="t-line s4-l8"><span class="t-dim">  DBAR caught it in 669ms.</span></div>
+      <div class="t-line s4-l8"><span class="t-dim">  DBAR caught it in ~670ms.</span></div>
       <div class="t-line s4-l9"> </div>
       <div class="t-line s4-l10"><span class="t-output">Cost Comparison</span></div>
       <div class="t-line s4-l11"><span class="t-dim">───────────────────────────────────────────</span></div>
-      <div class="t-line s4-l12"><span class="t-output">browser-use eval (100 tasks):  </span><span class="t-red">$19.00</span></div>
-      <div class="t-line s4-l13"><span class="t-output">DBAR replay (100 tasks):       </span><span class="t-green">$0.00</span></div>
-      <div class="t-line s4-l14"><span class="t-output">Savings:                       </span><span class="t-blue savings">100%</span></div>
+      <div class="t-line s4-l12"><span class="t-output">browser-use eval (100 tasks):  </span><span class="t-red">$10.00</span></div>
+      <div class="t-line s4-l13"><span class="t-output">DBAR replay (100 tasks):       </span><span class="t-green">$0 API cost</span></div>
+      <div class="t-line s4-l14"><span class="t-output">Savings:                       </span><span class="t-blue savings">100% API savings</span></div>
     </div>
   </div>
 </div>
@@ -571,9 +571,9 @@ body:hover #controls { opacity: 1; }
   </div>
   <div class="int-card int-c2">
     <h3># Browserbase</h3>
-    <pre>npx ts-node capture.ts \
-  --session-id $ID \
-  --api-key $KEY</pre>
+    <pre>BROWSERBASE_API_KEY=$KEY \
+npx ts-node capture.ts \
+  --session-id $ID</pre>
   </div>
   <div class="int-card int-c3">
     <h3># Any Playwright project</h3>

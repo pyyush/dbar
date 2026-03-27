@@ -402,11 +402,12 @@ footer {
       <div class="terminal-line">&nbsp;</div>
       <div class="terminal-line">Replay: <span class="t-warn">DIVERGED</span> <span class="t-dim">(DOM changed between runs)</span></div>
       <div class="terminal-line"><span class="t-dim">  &#8627; The site serves different timestamps on each load.</span></div>
-      <div class="terminal-line"><span class="t-dim">    DBAR caught it in 669ms.</span></div>
+      <div class="terminal-line"><span class="t-dim">    DBAR caught it in ~670ms.</span></div>
       <div class="terminal-line">&nbsp;</div>
       <div class="terminal-line"><span class="t-heading">Cost Comparison</span></div>
-      <div class="terminal-line">  browser-use eval (100 tasks): <span class="t-num">$19.00</span></div>
-      <div class="terminal-line">  DBAR replay (100 tasks):      <span class="t-ok">$0.00</span>   Savings: <span class="t-savings">100%</span></div>
+      <div class="terminal-line">  browser-use eval (100 tasks): <span class="t-num">$10.00</span>  <span class="t-dim"><a href="https://browser-use.com/posts/ai-browser-agent-benchmark" style="color: #555;">Source</a></span></div>
+      <div class="terminal-line">  DBAR replay (100 tasks):      <span class="t-ok">$0 API cost</span>   Savings: <span class="t-savings">100% API savings</span></div>
+      <div class="terminal-line"><span class="t-dim">  * Replay eliminates LLM API costs. Local compute (~$0.001) still applies.</span></div>
     </div>
   </div>
 </section>
@@ -417,28 +418,28 @@ footer {
 <section aria-labelledby="problem-title">
   <div class="container">
     <h2 class="section-title" id="problem-title">The Problem</h2>
-    <p class="section-subtitle">84,600+ GitHub stars. $84.5M in funding. 97% accuracy on benchmarks. But 0% can prove what happened deterministically.</p>
+    <p class="section-subtitle">84K+ GitHub stars. browser-use raised $17M. Browserbase raised $67.5M. 97% on <a href="https://browser-use.com/posts/ai-browser-agent-benchmark">Online-Mind2Web</a> (89.1% on WebVoyager). None offer deterministic replay with cryptographic state verification.</p>
     <div class="card-grid">
       <div class="card">
         <div class="card-icon card-icon--red" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L18 18H2L10 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="10" y1="8" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="14.5" r="0.75" fill="currentColor"/></svg>
         </div>
         <h3 class="card-title">No proof of execution</h3>
-        <p class="card-desc">browser-use has 84,600+ GitHub stars and $17M raised. Browserbase has $67.5M raised. Neither can cryptographically prove what their agents did.</p>
+        <p class="card-desc">browser-use has 84K+ GitHub stars and $17M raised. Browserbase has $67.5M raised. Neither can cryptographically prove what their agents did.</p>
       </div>
       <div class="card">
         <div class="card-icon card-icon--amber" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 5V11L14 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
         <h3 class="card-title">Eval burns money</h3>
-        <p class="card-desc">browser-use eval costs $0.19/task -- $19 per 100-task benchmark run. Same test, different results every time. You pay again on every run.</p>
+        <p class="card-desc">browser-use eval costs ~$0.10/task (<a href="https://browser-use.com/posts/ai-browser-agent-benchmark">Source</a>) -- $10 per 100-task benchmark run. Same test, different results every time. You pay again on every run.</p>
       </div>
       <div class="card">
         <div class="card-icon card-icon--violet" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="7.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
         </div>
         <h3 class="card-title">Silent divergence</h3>
-        <p class="card-desc">97% accuracy sounds great until your agent touches a bank account and you can't prove what happened. Most tools miss the 3% that matters.</p>
+        <p class="card-desc">97% on Online-Mind2Web (89.1% on WebVoyager) sounds great until your agent touches a bank account and you can't prove what happened. Most tools miss the failures that matter.</p>
       </div>
     </div>
   </div>
@@ -464,7 +465,7 @@ footer {
         That's DBAR doing exactly what it's designed to do: proving that
         the page you're looking at is not the page that was recorded.
       </p>
-      <span class="divergence-metric">dom_mismatch detected in 669ms</span>
+      <span class="divergence-metric">dom_mismatch detected in ~670ms</span>
     </div>
   </div>
 </section>
@@ -561,27 +562,29 @@ footer {
 <section aria-labelledby="cost-title">
   <div class="container" style="text-align: center;">
     <h2 class="section-title" id="cost-title" style="text-align: center;">Cost of Verification</h2>
-    <p class="section-subtitle" style="margin-left: auto; margin-right: auto;">browser-use eval costs real money. DBAR replays are free.</p>
+    <p class="section-subtitle" style="margin-left: auto; margin-right: auto;">browser-use eval costs real money. DBAR replays eliminate API costs.</p>
     <div class="cost-row">
       <div class="cost-item">
-        <div class="cost-value cost-value--red" aria-label="browser-use eval cost per task: $0.19">$0.19</div>
+        <div class="cost-value cost-value--red" aria-label="browser-use eval cost per task: $0.10">$0.10</div>
         <div class="cost-label">browser-use per task</div>
+        <div class="cost-source"><a href="https://browser-use.com/posts/ai-browser-agent-benchmark" style="color: #555;">Source</a></div>
       </div>
       <div class="cost-item">
-        <div class="cost-value cost-value--red" aria-label="100-task benchmark cost: $19.00">$19.00</div>
+        <div class="cost-value cost-value--red" aria-label="100-task benchmark cost: $10.00">$10.00</div>
         <div class="cost-label">100-task benchmark</div>
       </div>
       <div class="cost-item">
-        <div class="cost-value cost-value--green" aria-label="DBAR replay cost: $0.00">$0.00</div>
+        <div class="cost-value cost-value--green" aria-label="DBAR replay: $0 API cost">$0 API cost</div>
         <div class="cost-label">DBAR replay</div>
       </div>
       <div class="cost-item">
-        <div class="cost-value cost-value--blue" aria-label="Savings: 100%">100%</div>
-        <div class="cost-label">Savings</div>
+        <div class="cost-value cost-value--blue" aria-label="100% API savings">100%</div>
+        <div class="cost-label">API savings</div>
       </div>
     </div>
-    <p class="cost-tagline">Record once. Replay forever. At zero cost.</p>
-    <p class="cost-source">Cost data from <a href="https://browser-use.com/posts" style="color: #555;">browser-use.com/posts</a></p>
+    <p class="cost-tagline">Record once. Replay forever. At zero API cost.</p>
+    <p class="cost-source">Replay eliminates LLM API costs. Local compute (~$0.001/task) still applies.</p>
+    <p class="cost-source">Cost data from <a href="https://browser-use.com/posts/ai-browser-agent-benchmark" style="color: #555;">browser-use benchmark blog (Jan 31, 2026)</a></p>
   </div>
 </section>
 
@@ -643,9 +646,9 @@ npx ts-node capture.ts --cdp http://localhost:9222
         <h3 class="card-title">Browserbase</h3>
         <p class="card-desc">Record cloud browser sessions, replay locally</p>
         <pre class="int-card-code"><code><span class="cm"># integrations/browserbase/</span>
+<span class="cm"># export BROWSERBASE_API_KEY=...</span>
 npx ts-node capture.ts \
-  --session-id abc123 \
-  --api-key $BROWSERBASE_API_KEY</code></pre>
+  --session-id abc123</code></pre>
       </div>
       <div class="card">
         <div class="card-icon" aria-hidden="true">

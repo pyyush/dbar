@@ -35,6 +35,9 @@ npm install
 
 ### 2. Set Browserbase credentials
 
+The API key must be provided via environment variable only. Do not pass it as
+a CLI argument.
+
 ```bash
 export BROWSERBASE_API_KEY=your-api-key
 export BROWSERBASE_PROJECT_ID=your-project-id
@@ -114,21 +117,33 @@ See `example.ts` for a complete working example.
 ## File-Based Signaling
 
 | Signal file    | Effect                                              |
-|----------------|-----------------------------------------------------|
+| -------------- | --------------------------------------------------- |
 | `.dbar-step`   | Captures a step. File content is used as the label. |
 | `.dbar-finish` | Ends the session and writes the capsule to disk.    |
 
 Signal files are consumed (deleted) after being read. The capture process polls every 250ms.
 
+## Security Notice
+
+Capsules contain full network response bodies, cookies, localStorage values,
+and screenshots. These may include sensitive data (session tokens, PII,
+financial information). Handle capsule files with the same care as database
+backups.
+
+- Do not commit capsules to public repositories
+- Use DBAR's header redaction (enabled by default for auth headers)
+- Consider using `--no-screenshots` for sensitive workflows
+- Review capsule contents before sharing
+
 ## Files
 
-| File           | Description                                         |
-|----------------|-----------------------------------------------------|
-| `capture.ts`   | Node.js script: CDP attach via Browserbase API or direct URL, capture session, signal loop |
-| `replay.ts`    | Node.js script: load capsule, replay locally, output JSON |
-| `example.ts`   | End-to-end TypeScript example (create session, capture, replay) |
-| `package.json` | Node.js dependencies                                |
-| `tsconfig.json`| TypeScript configuration                            |
+| File            | Description                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `capture.ts`    | Node.js script: CDP attach via Browserbase API or direct URL, capture session, signal loop |
+| `replay.ts`     | Node.js script: load capsule, replay locally, output JSON                                  |
+| `example.ts`    | End-to-end TypeScript example (create session, capture, replay)                            |
+| `package.json`  | Node.js dependencies                                                                       |
+| `tsconfig.json` | TypeScript configuration                                                                   |
 
 ## License
 

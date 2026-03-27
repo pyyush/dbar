@@ -45,7 +45,6 @@ function parseArgs(): CaptureArgs {
   const args = process.argv.slice(2);
   let cdpUrl: string | undefined;
   let sessionId: string | undefined;
-  let apiKey: string | undefined;
   let outputDir = resolve("./capsules");
 
   for (let i = 0; i < args.length; i++) {
@@ -58,19 +57,14 @@ function parseArgs(): CaptureArgs {
     } else if (arg === "--session-id" && next) {
       sessionId = next;
       i++;
-    } else if (arg === "--api-key" && next) {
-      apiKey = next;
-      i++;
     } else if (arg === "--output-dir" && next) {
       outputDir = resolve(next);
       i++;
     }
   }
 
-  // Fall back to environment variables for Browserbase credentials.
-  if (!apiKey) {
-    apiKey = process.env["BROWSERBASE_API_KEY"];
-  }
+  // API key must come from environment variable only -- never pass secrets via CLI args.
+  const apiKey = process.env["BROWSERBASE_API_KEY"];
   if (!sessionId && !cdpUrl) {
     sessionId = process.env["BROWSERBASE_SESSION_ID"];
   }
@@ -173,19 +167,18 @@ async function main(): Promise<void> {
   } else if (sessionId && apiKey) {
     console.log(`[dbar-capture] Resolving CDP URL for Browserbase session ${sessionId}...`);
     cdpUrl = await resolveCdpUrl(sessionId, apiKey);
-    console.log(`[dbar-capture] Resolved CDP URL: ${cdpUrl}`);
+    console.log(`[dbar-capture] Resolved CDP URL: ${cdpUrl.replace(/\/[^/]+$/, '/[MASKED]')}`);
   } else {
     console.error(
-      "[dbar-capture] Error: provide either --cdp-url or --session-id with BROWSERBASE_API_KEY.\n" +
+      "[dbar-capture] Error: provide either --cdp-url or --session-id with BROWSERBASE_API_KEY env var.\n" +
       "  Usage:\n" +
       "    capture.ts --cdp-url ws://...\n" +
-      "    capture.ts --session-id <id> --api-key <key>\n" +
       "    BROWSERBASE_API_KEY=... capture.ts --session-id <id>"
     );
     process.exit(1);
   }
 
-  console.log(`[dbar-capture] Connecting to browser at ${cdpUrl}`);
+  console.log(`[dbar-capture] Connecting to browser at ${cdpUrl.replace(/\/[^/]+$/, '/[MASKED]')}`);
 
   const browser = await chromium.connectOverCDP(cdpUrl);
   const contexts = browser.contexts();

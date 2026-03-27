@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 
   const localBrowser = await chromium.launch({
     headless: true,
-    args: ["--disable-gpu", "--no-sandbox"],
+    args: ["--disable-gpu", ...(process.env["DBAR_NO_SANDBOX"] === "1" ? ["--no-sandbox"] : [])],
   });
 
   const localContext = await localBrowser.newContext({

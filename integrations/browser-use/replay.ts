@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   console.error("[dbar-replay] Launching browser...");
   const browser = await chromium.launch({
     headless: true,
-    args: ["--disable-gpu", "--no-sandbox"],
+    args: ["--disable-gpu", ...(process.env["DBAR_NO_SANDBOX"] === "1" ? ["--no-sandbox"] : [])],
   });
 
   const context = await browser.newContext({
