@@ -40,28 +40,16 @@ export function parseArgs(argv: string[]): ParsedCommand {
   }
 
   if (first === "replay") {
-    const capsulePath = args.find((a) => !a.startsWith("--"));
-    if (!capsulePath || capsulePath === "replay") {
-      // Look for a positional arg after "replay"
-      const positional = args.slice(1).find((a) => !a.startsWith("--"));
-      if (!positional) {
-        return {
-          command: "error",
-          message: "replay requires a capsule path. Usage: dbar replay <capsule-path> [--cost] [--json]",
-        };
-      }
+    const positional = args.slice(1).find((a) => !a.startsWith("--"));
+    if (!positional) {
       return {
-        command: "replay",
-        capsulePath: positional,
-        options: {
-          cost: args.includes("--cost"),
-          json: args.includes("--json"),
-        },
+        command: "error",
+        message: "replay requires a capsule path. Usage: dbar replay <capsule-path> [--cost] [--json]",
       };
     }
     return {
       command: "replay",
-      capsulePath: args[1]!,
+      capsulePath: positional,
       options: {
         cost: args.includes("--cost"),
         json: args.includes("--json"),

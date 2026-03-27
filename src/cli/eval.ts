@@ -10,6 +10,8 @@ import type { CapsuleArchive } from "../capsule/builder.js";
 /** A single expectation in an assertion. */
 export interface AssertionExpect {
   url_contains?: string;
+  /** Alias for url_contains — clearer name since it checks initialState.url only. */
+  initial_url_contains?: string;
   dom_hash_stable?: boolean;
   accessibility_contains?: string;
   network_count_gte?: number;
@@ -64,10 +66,19 @@ export function checkAssertion(archive: CapsuleArchive, assertion: Assertion): A
   const failures: string[] = [];
   const expect = assertion.expect;
 
+  // NOTE: url_contains checks the capsule's initial URL, not per-step URLs.
+  // Per-step URL tracking is not yet implemented in the capsule format.
   if (expect.url_contains !== undefined) {
     const url = capsule.initialState.url;
     if (!url.includes(expect.url_contains)) {
       failures.push(`url_contains "${expect.url_contains}" — got "${url}"`);
+    }
+  }
+
+  if (expect.initial_url_contains !== undefined) {
+    const url = capsule.initialState.url;
+    if (!url.includes(expect.initial_url_contains)) {
+      failures.push(`initial_url_contains "${expect.initial_url_contains}" — got "${url}"`);
     }
   }
 

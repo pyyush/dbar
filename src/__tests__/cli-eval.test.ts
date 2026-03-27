@@ -257,4 +257,32 @@ describe("checkAssertion", () => {
     const result = checkAssertion(archive, assertion);
     expect(result.passed).toBe(false);
   });
+
+  it("should pass initial_url_contains as alias for url_contains", () => {
+    const archive = makeCapsule({
+      initialState: {
+        url: "https://example.com/dashboard",
+        cookies: [], localStorage: [], unsupportedState: ["sessionStorage"],
+      },
+    });
+    const assertion: Assertion = {
+      step: "loaded",
+      expect: { initial_url_contains: "example.com" },
+    };
+
+    const result = checkAssertion(archive, assertion);
+    expect(result.passed).toBe(true);
+  });
+
+  it("should fail initial_url_contains when URL does not match", () => {
+    const archive = makeCapsule();
+    const assertion: Assertion = {
+      step: "loaded",
+      expect: { initial_url_contains: "/nonexistent" },
+    };
+
+    const result = checkAssertion(archive, assertion);
+    expect(result.passed).toBe(false);
+    expect(result.message).toContain("initial_url_contains");
+  });
 });

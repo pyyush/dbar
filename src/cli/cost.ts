@@ -2,8 +2,8 @@
  * Cost estimation for DBAR replay savings.
  *
  * Compares the estimated cost of an original browser agent run (LLM tokens +
- * compute) against a deterministic replay (which costs $0 — all network is
- * mocked, no LLM calls, local browser only).
+ * compute) against a deterministic replay (no LLM calls, all network mocked,
+ * but browser compute cost remains).
  */
 
 /** Input data extracted from a capsule for cost estimation. */
@@ -26,19 +26,26 @@ export interface CostBreakdown {
   computeCost: number;
   /** Total estimated original run cost in USD. */
   totalOriginalCost: number;
-  /** Replay cost — always $0.00. */
+  /** Replay compute cost in USD (replay still uses browser compute). */
+  replayComputeCost: number;
+  /** Replay cost — equals replayComputeCost (no LLM calls, but compute remains). */
   replayCost: number;
-  /** Dollar savings (totalOriginalCost - replayCost). */
-  savings: number;
+  /** API savings in USD (totalOriginalCost - replayComputeCost). */
+  apiSavings: number;
+  /** API savings as a percentage of totalOriginalCost. */
+  apiSavingsPercent: number;
   /** Number of steps (pass-through for display). */
   stepCount: number;
   /** Number of network requests (pass-through for display). */
   networkRequestCount: number;
 }
 
-// Claude Sonnet pricing (USD per token)
+// Rates: Claude Sonnet 4 ($3/1M input, $15/1M output) as of March 2026
 const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
 const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+
+// Browser agents output ~15% of input tokens (mostly action commands, not prose)
+const OUTPUT_TOKEN_RATIO = 0.15;
 
 // Cloud browser compute: ~$0.0000463 per vCPU-second
 const VCPU_COST_PER_SECOND = 0.0000463;
@@ -68,17 +75,24 @@ export function calculateCost(input: CostInput): CostBreakdown {
   const estimatedTokens = Math.floor(totalChars / 4);
 
   const llmCost =
-    estimatedTokens * INPUT_COST_PER_TOKEN + estimatedTokens * OUTPUT_COST_PER_TOKEN;
+    estimatedTokens * INPUT_COST_PER_TOKEN +
+    (estimatedTokens * OUTPUT_TOKEN_RATIO) * OUTPUT_COST_PER_TOKEN;
   const computeCost = input.stepCount * SECONDS_PER_STEP * VCPU_COST_PER_SECOND;
   const totalOriginalCost = llmCost + computeCost;
+  const replayComputeCost = input.stepCount * SECONDS_PER_STEP * VCPU_COST_PER_SECOND;
+  const apiSavings = totalOriginalCost - replayComputeCost;
+  const apiSavingsPercent =
+    totalOriginalCost > 0 ? (apiSavings / totalOriginalCost) * 100 : 0;
 
   return {
     estimatedTokens,
     llmCost,
     computeCost,
     totalOriginalCost,
-    replayCost: 0,
-    savings: totalOriginalCost,
+    replayComputeCost,
+    replayCost: replayComputeCost,
+    apiSavings,
+    apiSavingsPercent,
     stepCount: input.stepCount,
     networkRequestCount: input.networkRequestCount,
   };

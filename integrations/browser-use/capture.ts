@@ -137,7 +137,7 @@ async function main(): Promise<void> {
   console.log(`[dbar-capture] Steps: ${archive.manifest.steps.length}, Requests: ${archive.manifest.networkTranscript.entries.length}`);
 
   await browser.close();
-  process.exit(0);
+  process.exitCode = 0;
 }
 
 main().catch((error: unknown) => {

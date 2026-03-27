@@ -92,8 +92,9 @@ export async function runReplay(
           `  Network:     ${costBreakdown.networkRequestCount} requests`,
           `  Compute:     $${costBreakdown.computeCost.toFixed(2)}`,
           "",
-          `Replay cost:   $${costBreakdown.replayCost.toFixed(2)}`,
-          `Savings:       $${costBreakdown.savings.toFixed(2)} (100%)`
+          `Replay cost (API):     $0.00`,
+          `Replay cost (compute): $${costBreakdown.replayComputeCost.toFixed(2)}`,
+          `API savings:   $${costBreakdown.apiSavings.toFixed(2)} (${costBreakdown.apiSavingsPercent.toFixed(1)}%)`
         );
       }
 

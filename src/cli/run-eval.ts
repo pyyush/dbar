@@ -50,7 +50,7 @@ function parseAssertionsYaml(content: string): Assertion[] {
     if (line.trim() === "assertions:") continue;
 
     // New assertion item
-    const stepMatch = line.match(/^\s+-\s+step:\s*"?([^"]+)"?\s*$/);
+    const stepMatch = line.match(/^\s+-\s+step:\s*"?([^"]*)"?\s*$/);
     if (stepMatch) {
       if (current?.step) {
         assertions.push({ step: current.step, expect: current.expect as Assertion["expect"] });
@@ -68,7 +68,7 @@ function parseAssertionsYaml(content: string): Assertion[] {
 
     // Key-value inside expect block
     if (inExpect && current) {
-      const kvMatch = line.match(/^\s+(\w+):\s*"?([^"]*)"?\s*$/);
+      const kvMatch = line.match(/^\s+([\w-]+):\s*"?([^"]*)"?\s*$/);
       if (kvMatch) {
         const key = kvMatch[1]!;
         let value: unknown = kvMatch[2]!.trim();

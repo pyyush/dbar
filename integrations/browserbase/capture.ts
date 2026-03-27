@@ -7,8 +7,8 @@
  *   2. Direct CDP: provide a raw WebSocket CDP URL
  *
  * Usage:
- *   # Via Browserbase API (env vars or CLI args)
- *   BROWSERBASE_API_KEY=... BROWSERBASE_PROJECT_ID=... \
+ *   # Via Browserbase API (API key from env var only)
+ *   BROWSERBASE_API_KEY=... \
  *     node --loader ts-node/esm capture.ts --session-id <id> [--output-dir ./capsules]
  *
  *   # Via direct CDP URL
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
   console.log(`[dbar-capture] Steps: ${archive.manifest.steps.length}, Requests: ${archive.manifest.networkTranscript.entries.length}`);
 
   await browser.close();
-  process.exit(0);
+  process.exitCode = 0;
 }
 
 main().catch((error: unknown) => {
