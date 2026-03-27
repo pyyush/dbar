@@ -477,9 +477,9 @@ async function main(): Promise<void> {
   await humanDelay(2000);
 
   // Show cost comparison
-  await showCost(dashPage, "$0.19", "$0.00", "100%");
+  await showCost(dashPage, "$0.10", "$0 API", "~99%");
   await setPhase(dashPage, "Replay complete.");
-  console.log("  Cost: browser-use $0.19 vs DBAR $0.00 (100% savings)");
+  console.log("  Cost: browser-use $0.10/task vs DBAR $0 API cost (~99% savings)");
   await humanDelay(3000);
 
   // ── Scene 7: End card (80-90s) ─────────────────────────────────
@@ -550,7 +550,7 @@ async function runDemoWithoutCapture(
     await humanDelay(800);
   }
 
-  await showCost(dashPage, "$0.19", "$0.00", "100%");
+  await showCost(dashPage, "$0.10", "$0 API", "~99%");
   await setPhase(dashPage, "Replay complete.");
   await humanDelay(3000);
   await showCTA(dashPage);
