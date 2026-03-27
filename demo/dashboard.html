@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAR Dashboard</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  background: #0a0a0a; color: #e5e5e5; line-height: 1.6;
+  padding: 1.5rem; min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 2rem; padding-bottom: 1rem;
+  border-bottom: 1px solid #1e1e1e;
+}
+.header-logo {
+  font-size: 1.25rem; font-weight: 800; color: #fff;
+  letter-spacing: -0.03em;
+}
+.header-logo .accent { color: #3b82f6; }
+.header-version {
+  font-size: 0.7rem; color: #555;
+  border: 1px solid #333; border-radius: 4px;
+  padding: 0.15em 0.5em;
+}
+
+/* ── Session Info ───────────────────────────────────────────────── */
+.session-info { margin-bottom: 1.5rem; }
+.session-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.35rem; font-size: 0.85rem;
+}
+.session-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #555; flex-shrink: 0;
+}
+.session-dot.active {
+  background: #22c55e;
+  animation: pulse 2s ease-in-out infinite;
+}
+.session-dot.complete { background: #3b82f6; }
+.session-dot.replaying {
+  background: #f59e0b;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.session-label { color: #888; }
+.session-value { color: #e5e5e5; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50% { opacity: 0.7; box-shadow: 0 0 8px 2px currentColor; }
+}
+
+/* ── Steps List ─────────────────────────────────────────────────── */
+.section-title {
+  font-size: 0.75rem; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+.steps-list { margin-bottom: 1.5rem; min-height: 2rem; }
+.step-entry {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  gap: 0.5rem; align-items: center;
+  padding: 0.4rem 0.6rem; margin-bottom: 0.25rem;
+  border-radius: 6px; font-size: 0.8rem;
+  background: #111; border: 1px solid #1a1a1a;
+  animation: slideIn 0.3s ease-out;
+}
+.step-index { color: #555; text-align: right; }
+.step-label { color: #a78bfa; font-weight: 600; }
+.step-hash {
+  color: #3b82f6; font-size: 0.7rem;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+.step-status-icon { font-size: 0.7rem; }
+.step-status-icon.match { color: #22c55e; }
+.step-status-icon.diverged { color: #ef4444; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Info Box ───────────────────────────────────────────────────── */
+.info-box {
+  background: #111; border: 1px solid #1e1e1e; border-radius: 8px;
+  padding: 1rem 1.25rem; margin-bottom: 1rem;
+}
+.info-box .box-title {
+  font-size: 0.7rem; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 0.6rem;
+}
+.info-row {
+  display: flex; justify-content: space-between;
+  font-size: 0.8rem; margin-bottom: 0.25rem;
+}
+.info-row .label { color: #888; }
+.info-row .value { color: #e5e5e5; font-weight: 600; }
+
+/* ── Cost Box ───────────────────────────────────────────────────── */
+.cost-box {
+  background: #111; border: 1px solid #1e1e1e; border-radius: 8px;
+  padding: 1rem 1.25rem; margin-bottom: 1rem;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.cost-box.visible {
+  opacity: 1; transform: translateY(0);
+}
+.savings-value {
+  color: #3b82f6; font-weight: 800; font-size: 1.1rem;
+  animation: nonePulse 2s ease-in-out infinite;
+}
+@keyframes nonePulse {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50% { text-shadow: 0 0 12px rgba(59, 130, 246, 0.5); }
+}
+
+/* ── Replay Results ─────────────────────────────────────────────── */
+.replay-section {
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.replay-section.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ── CTA ────────────────────────────────────────────────────────── */
+.cta {
+  margin-top: 2rem; padding-top: 1.5rem;
+  border-top: 1px solid #1e1e1e;
+  text-align: center; font-size: 0.8rem;
+  opacity: 0; transition: opacity 0.8s ease;
+}
+.cta.visible { opacity: 1; }
+.cta-install {
+  display: inline-block; background: #111; border: 1px solid #333;
+  border-radius: 6px; padding: 0.5rem 1rem; margin-bottom: 0.5rem;
+  color: #3b82f6; font-weight: 600; font-size: 0.85rem;
+}
+.cta-link { color: #555; font-size: 0.75rem; }
+
+/* ── Phase indicator ────────────────────────────────────────────── */
+.phase-bar {
+  font-size: 0.7rem; color: #555;
+  text-align: center; margin-top: 1rem;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><span class="accent">D</span>BAR</div>
+  <div class="header-version">v0.1.0</div>
+</div>
+
+<div class="session-info">
+  <div class="session-row">
+    <div class="session-dot" id="session-dot"></div>
+    <span class="session-label">Session:</span>
+    <span class="session-value" id="session-status">waiting...</span>
+  </div>
+  <div class="session-row">
+    <span class="session-label">Site:</span>
+    <span class="session-value" id="session-site">--</span>
+  </div>
+</div>
+
+<div class="section-title">Steps</div>
+<div class="steps-list" id="steps-list"></div>
+
+<div class="info-box" id="capsule-box">
+  <div class="box-title">Capsule</div>
+  <div class="info-row">
+    <span class="label">Requests</span>
+    <span class="value" id="capsule-requests">--</span>
+  </div>
+  <div class="info-row">
+    <span class="label">Size</span>
+    <span class="value" id="capsule-size">--</span>
+  </div>
+  <div class="info-row">
+    <span class="label">Steps</span>
+    <span class="value" id="capsule-steps">--</span>
+  </div>
+</div>
+
+<div class="replay-section" id="replay-section">
+  <div class="section-title">Replay</div>
+  <div class="steps-list" id="replay-steps-list"></div>
+</div>
+
+<div class="cost-box" id="cost-box">
+  <div class="box-title">Cost Comparison</div>
+  <div class="info-row">
+    <span class="label">browser-use eval</span>
+    <span class="value" id="cost-live">--</span>
+  </div>
+  <div class="info-row">
+    <span class="label">DBAR replay</span>
+    <span class="value" id="cost-replay">--</span>
+  </div>
+  <div class="info-row">
+    <span class="label">Savings</span>
+    <span class="value savings-value" id="cost-savings">--</span>
+  </div>
+</div>
+
+<div class="cta" id="cta">
+  <div class="cta-install">npm install @pyyush/dbar</div>
+  <div class="cta-link">github.com/pyyush/dbar</div>
+</div>
+
+<div class="phase-bar" id="phase-bar"></div>
+
+</body>
+</html>
