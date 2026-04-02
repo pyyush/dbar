@@ -224,6 +224,7 @@ export type DeterminismCapsule = z.infer<typeof DeterminismCapsuleSchema>;
 export const DivergenceTypeSchema = z.enum([
   "dom_mismatch",
   "accessibility_mismatch",
+  "screenshot_mismatch",
   "network_digest_mismatch",
   "unmatched_request",
   "unsupported_traffic",

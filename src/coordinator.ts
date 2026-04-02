@@ -60,6 +60,8 @@ export interface CaptureSessionState {
   >;
   startTime: number;
   aborted: boolean;
+  /** Whether the TimeVirtualizer has been started (deferred to first step). */
+  timeVirtualizerStarted: boolean;
 }
 
 /**
@@ -120,7 +122,10 @@ export class Coordinator {
     });
 
     await recorder.start();
-    await timeVirtualizer.start();
+    // TimeVirtualizer is NOT started here — it's deferred to the first step()
+    // call. Starting virtual time during capture setup causes page.goto() with
+    // waitUntil:"networkidle" to hang because pauseIfNetworkFetchesPending
+    // pauses the browser's internal timers while Fetch events are pending.
 
     cdpSession.on("disconnected" as any, () => {
       trace.recordSession("cdp_session_lost");
@@ -145,6 +150,7 @@ export class Coordinator {
       artifacts: new Map(),
       startTime: Date.now(),
       aborted: false,
+      timeVirtualizerStarted: false,
     };
   }
 
@@ -165,6 +171,13 @@ export class Coordinator {
     const index = state.stepIndex;
     state.trace.recordSession("step_start", { index, label });
 
+    // Start virtual time on first step (deferred from startCapture to avoid
+    // blocking page.goto with networkidle)
+    if (!state.timeVirtualizerStarted) {
+      await state.timeVirtualizer.start();
+      state.timeVirtualizerStarted = true;
+    }
+
     // 1. Pause virtual time for deterministic snapshot
     await state.timeVirtualizer.pause();
 
@@ -179,7 +192,7 @@ export class Coordinator {
     // 3. Capture all observables in parallel
     const [domResult, a11yResult, screenshotResult] = await Promise.all([
       captureDOMSnapshot(state.cdpSession),
-      captureAccessibilitySnapshot(state.page),
+      captureAccessibilitySnapshot(state.page, state.cdpSession),
       captureScreenshot(state.page, { masks: state.options.screenshotMasks }),
     ]);
 
@@ -218,8 +231,8 @@ export class Coordinator {
 
     state.trace.recordSnapshot(index, observables);
 
-    // 7. Resume virtual time
-    await state.timeVirtualizer.resume();
+    // 7. Suspend virtual time (advance mode) so navigation works between steps
+    await state.timeVirtualizer.suspend();
     state.stepIndex++;
 
     const captureMs = Date.now() - stepStart;
@@ -235,7 +248,9 @@ export class Coordinator {
     state.aborted = true;
     state.trace.recordSession("capture_abort");
     await state.recorder.stop();
-    await state.timeVirtualizer.stop();
+    if (state.timeVirtualizerStarted) {
+      await state.timeVirtualizer.stop();
+    }
   }
 
   /**

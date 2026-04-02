@@ -129,12 +129,26 @@ describe("Coordinator", () => {
     it("shouldStartRecorderAndTimeVirtualizer", async () => {
       // Given a page
       // When starting capture
-      await Coordinator.startCapture(page as any);
+      const state = await Coordinator.startCapture(page as any);
 
-      // Then CDP domains are enabled (Fetch.enable from recorder, Emulation.setVirtualTimePolicy from virtualizer)
-      const sendCalls = cdp.send.mock.calls.map((c: any[]) => c[0]);
+      // Then recorder CDP domains are enabled immediately
+      let sendCalls = cdp.send.mock.calls.map((c: any[]) => c[0]);
       expect(sendCalls).toContain("Fetch.enable");
       expect(sendCalls).toContain("Network.enable");
+      // TimeVirtualizer is deferred to first step() call
+      expect(sendCalls).not.toContain("Emulation.setVirtualTimePolicy");
+
+      // When taking the first step, virtualizer starts
+      cdp.send.mockImplementation(async (method: string) => {
+        if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+        if (method === "DOM.getOuterHTML") return { outerHTML: "<html></html>" };
+        if (method === "DOMSnapshot.captureSnapshot") {
+          return { documents: [], strings: [] };
+        }
+        return {};
+      });
+      await Coordinator.step(state, "test-step");
+      sendCalls = cdp.send.mock.calls.map((c: any[]) => c[0]);
       expect(sendCalls).toContain("Emulation.setVirtualTimePolicy");
     });
   });
@@ -145,6 +159,8 @@ describe("Coordinator", () => {
     beforeEach(async () => {
       // Mock CDP responses needed during step
       cdp.send.mockImplementation(async (method: string) => {
+        if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+        if (method === "DOM.getOuterHTML") return { outerHTML: "<html></html>" };
         if (method === "DOMSnapshot.captureSnapshot") {
           return { documents: [], strings: [] };
         }

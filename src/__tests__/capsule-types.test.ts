@@ -421,7 +421,7 @@ describe("DivergenceTypeSchema", () => {
     // Given an unknown divergence type
     // When parsed
     // Then it throws
-    expect(() => DivergenceTypeSchema.parse("screenshot_mismatch")).toThrow();
+    expect(() => DivergenceTypeSchema.parse("nonexistent_type")).toThrow();
   });
 });
 
