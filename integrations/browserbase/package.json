@@ -2,6 +2,7 @@
   "name": "@pyyush/dbar-browserbase",
   "version": "0.2.0",
   "description": "DBAR + Browserbase: deterministic capture in the cloud, replay locally",
+  "private": true,
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
@@ -9,6 +10,7 @@
     "capture": "npx tsx capture.ts",
     "replay": "npx tsx replay.ts",
     "example": "npx tsx example.ts",
+    "prepublishOnly": "node -e \"console.error('This integration package is intentionally not publishable.'); process.exit(1)\"",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
