@@ -2,12 +2,14 @@
   "name": "@pyyush/dbar-browser-use",
   "version": "0.2.0",
   "description": "DBAR snapshot capture sidecar for browser-use agent sessions",
+  "private": true,
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "tsc",
     "capture": "node --loader ts-node/esm capture.ts",
+    "prepublishOnly": "node -e \"console.error('This integration package is intentionally not publishable.'); process.exit(1)\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
