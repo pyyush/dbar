@@ -27,7 +27,7 @@ It does **not** yet provide the full deterministic replay engine from the TypeSc
 
 ## Version Compatibility
 
-- `dbar 0.2.0`
+- DBAR Python releases track the repo release line
 - `browser-use 0.12.5`
 - Python 3.11+ for the `browser-use` extra
 
