@@ -1,6 +1,24 @@
-# DBAR + Browserbase Integration
+# DBAR Browserbase Integration
 
-Deterministic capture on [Browserbase](https://www.browserbase.com/) cloud browsers, replay locally.
+First-class DBAR integration for [Browserbase](https://www.browserbase.com/)
+sessions.
+
+Use this lane when you want DBAR to own a Browserbase-hosted browser session
+end to end and keep full deterministic capture, replay, and first-divergence
+diagnosis.
+
+Compared with the `browser-use` integration, Browserbase is the full-control
+lane: DBAR owns the session, records network, freezes time, and produces a
+replayable capsule.
+
+This integration is verified against these exact versions:
+
+- Node.js 20+
+- `@browserbasehq/sdk==2.9.0`
+- `playwright-core==1.58.2`
+- `tsx==4.21.0`
+- `typescript==5.9.3`
+- `vitest==4.1.2`
 
 **DBAR owns the Browserbase session.** Unlike the browser-use integration (where DBAR is a sidecar observing someone else's browser), here DBAR controls the session end-to-end. This means full deterministic capture works: virtual time, network recording, and replayable capsules.
 
@@ -31,8 +49,11 @@ export BROWSERBASE_PROJECT_ID=your-project-id
 
 ### Pinned Versions
 
-- `@browserbasehq/sdk` ^2.6.0 (uses `session.connectUrl` for CDP)
-- `playwright-core` >=1.40.0 (peer dependency)
+- `@browserbasehq/sdk` 2.9.0 (uses `session.connectUrl` for CDP)
+- `playwright-core` 1.58.2
+- `tsx` 4.21.0
+- `typescript` 5.9.3
+- `vitest` 4.1.2
 
 ## Capture
 
@@ -131,7 +152,7 @@ Capsules contain full network response bodies, cookies, localStorage values, and
 | `replay.ts` | CLI: replay capsule locally, output results |
 | `example.ts` | End-to-end demo (capture on Browserbase, replay locally) |
 | `helpers.ts` | Pure helper functions (arg parsing, URL masking) |
-| `package.json` | Dependencies (pins @browserbasehq/sdk ^2.6.0) |
+| `package.json` | Dependencies (pins @browserbasehq/sdk 2.9.0) |
 | `tsconfig.json` | TypeScript configuration |
 | `__tests__/` | Unit tests for helper functions |
 

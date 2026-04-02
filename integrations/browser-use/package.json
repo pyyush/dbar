@@ -15,16 +15,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pyyush/dbar": "^0.1.0"
+    "@pyyush/dbar": "file:../.."
   },
   "peerDependencies": {
     "playwright-core": ">=1.40.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.7.0",
-    "vitest": "^4.0.0"
+    "@types/node": "22.19.15",
+    "playwright-core": "1.58.2",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.2"
   },
   "engines": {
     "node": ">=20.0.0"

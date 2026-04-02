@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "dbar"
 version = "0.2.0"
-description = "Deterministic Browser Agent Runtime — replayable browser execution capsules"
+description = "Evidence capsules for browser-use runs: record, diff, and keep browser agent traces"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-browser-use = ["browser-use>=0.1.0"]
+browser-use = ["browser-use==0.12.5; python_version >= '3.11'"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
