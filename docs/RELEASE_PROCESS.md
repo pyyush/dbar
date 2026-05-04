@@ -7,7 +7,9 @@ or tag from a dirty branch.
 
 - All Definition of Done items in `RELEASE_PLAN.md` are checked.
 - The RC has been validated by at least one external developer.
-- `package.json`, `python/pyproject.toml`, and `python/dbar.__version__` match
+- `RC_VALIDATION.md` is filled in with the RC artifact URLs, checksums, CI run,
+  external validator results, and any accepted residual risks.
+- `package.json`, `python/pyproject.toml`, and `python/dbar/_version.py` match
   the intended tag version.
 - `npm view @pyyush/dbar version --json` and
   `python3 -m pip index versions dbar` have been checked immediately before
@@ -24,7 +26,8 @@ npm ci
 npm run release:verify
 python3 -m pip install -e "./python[dev]" build twine
 python3 -m pytest python/tests
-rm -rf python/dist python/build python/*.egg-info
+rm -rf python/dist python/build
+find python -maxdepth 1 -name "*.egg-info" -exec rm -rf {} +
 cd python
 python3 -m build
 python3 -m twine check dist/*
@@ -50,6 +53,12 @@ DBAR 1.0.0 does not ship `dbar[browser-use]`. As of May 4, 2026, PyPI's latest
 transitive dependencies. The browser-use lane remains integration guidance and
 an npm sidecar test lane only until upstream publishes an auditable dependency
 set or DBAR adds a separate safe adapter package.
+
+For release candidates, use `RC_VALIDATION.md` as the operating checklist. The
+first RC placeholder is `v1.0.0-rc.1` / `@pyyush/dbar@1.0.0-rc.1` for npm and
+`dbar==1.0.0rc1` for Python. The release owner must resolve prerelease version
+normalization before tagging because npm SemVer and Python PEP 440 spell the RC
+version differently.
 
 ## Tag-To-Publish Automation
 

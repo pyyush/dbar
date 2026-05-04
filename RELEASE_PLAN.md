@@ -1257,7 +1257,14 @@ untracked release files. A scoped docs commit would include earlier work.
 
 **Depends on:** Tasks 1 through 15
 
-**RC gate status:** Blocked until implementation and external validation happen. The Task 15 Python `browser-use` optional-extra blocker is resolved by removing the extra from the release scope and making the release workflow assert that it is absent before any tag can publish.
+**RC gate status:** Handoff prepared, but still blocked on version alignment, remote settings, registry credentials, an actual RC artifact, remote CI evidence, and external validation. The Task 15 Python `browser-use` optional-extra blocker is resolved by removing that extra from the release scope and making the release workflow assert that it is absent before any tag can publish.
+
+**Task 16 handoff artifacts:**
+
+- [x] `RC_VALIDATION.md` created with exact RC placeholders, install commands, smoke commands, CI evidence checklist, external-validator instructions, pass/fail criteria, checksum fields, and remaining blockers.
+- [x] `docs/RELEASE_PROCESS.md` points release owners to `RC_VALIDATION.md`.
+- [x] Browser-harness remains optional interop only; no dependency, backend, release gate, or CI matrix was added.
+- [ ] RC version alignment is resolved before tag creation. Current blocker: npm should use `1.0.0-rc.1`, Python should use PEP 440 `1.0.0rc1`, and the release workflow must compare normalized versions or use a compatible tag scheme.
 
 **Required evidence before RC:**
 
