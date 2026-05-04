@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pyyush/dbar/main/.github/banners/05-replay-arrows.svg" alt="DBAR — Deterministic Browser Agent Runtime" width="800"/>
+  <img src="./assets/readme-banner.svg" alt="DBAR — Deterministic Browser Agent Runtime" width="800"/>
 </p>
 
 <p align="center">

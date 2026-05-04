@@ -1,7 +1,8 @@
 name: Release
 on:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -98,6 +99,20 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check repository hygiene
+        run: |
+          if git ls-files | grep -E '^(docs/plans|\.omx|\.pilot|\.dev-session)(/|$)|(^|/)(AGENTS\.md|CLAUDE\.md|POSITIONING\.md|ROADMAP\.md|BROWSER_USE_PR\.md|demo/RECORD-DEMO-PROMPT\.md|\.staff-engineer-state\.json|\.staff-engineer\.json)$'; then
+            echo "Tracked internal-only files found in public release tree."
+            exit 1
+          fi
+          extra_banners="$(git ls-files .github/banners | grep -Ev '^\.github/banners/05-replay-arrows\.svg$' || true)"
+          if [ -n "$extra_banners" ]; then
+            printf '%s\n' "$extra_banners"
+            echo "Tracked banner drafts found outside the release banner."
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
