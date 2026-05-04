@@ -69,5 +69,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: integrations/browserbase/package-lock.json
+      - name: Build root package
+        working-directory: .
+        run: |
+          npm ci
+          npm run build
       - run: npm ci
       - run: npm test
