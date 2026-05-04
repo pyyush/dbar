@@ -37,16 +37,18 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      - name: Prepare release versions
+        id: release_version
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
       - run: npm ci
       - name: Check tag and package versions
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
           NPM_VERSION="$(node -p "require('./package.json').version")"
           PY_VERSION="$(python3 -c "import pathlib, re; text = pathlib.Path('python/pyproject.toml').read_text(encoding='utf-8'); match = re.search(r'^version = \\\"([^\\\"]+)\\\"$', text, re.M); print(match.group(1))")"
           PY_RUNTIME_VERSION="$(PYTHONPATH=python python3 -c "import dbar; print(dbar.__version__)")"
-          test "$TAG_VERSION" = "$NPM_VERSION"
-          test "$TAG_VERSION" = "$PY_VERSION"
-          test "$TAG_VERSION" = "$PY_RUNTIME_VERSION"
+          test "${{ steps.release_version.outputs.npm_version }}" = "$NPM_VERSION"
+          test "${{ steps.release_version.outputs.python_version }}" = "$PY_VERSION"
+          test "${{ steps.release_version.outputs.python_version }}" = "$PY_RUNTIME_VERSION"
       - run: npm run release:verify
       - uses: actions/setup-python@v5
         with:
@@ -101,17 +103,21 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      - name: Prepare release versions
+        id: release_version
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
       - run: npm ci
       - run: npm run clean
       - run: npm run build
       - run: npm run package:check
-      - run: npm publish --access public --provenance
+      - run: npm publish --access public --provenance --tag "${{ steps.release_version.outputs.npm_dist_tag }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          prerelease: ${{ steps.release_version.outputs.github_prerelease }}
 
   pypi:
     runs-on: ubuntu-latest
@@ -123,6 +129,12 @@ jobs:
         working-directory: python
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare release versions
+        working-directory: .
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

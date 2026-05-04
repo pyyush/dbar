@@ -621,7 +621,9 @@ explicitly promotes them.
 
 ## Current Product Surface
 
-- **`@pyyush/dbar` on npm**: deterministic capture and replay for Chromium/CDP Playwright sessions
+- **`@pyyush/dbar` on npm**: deterministic capture and replay for Chromium/CDP Playwright sessions.
+  The release branch metadata targets `1.0.0`; RC tags are normalized in CI so
+  npm publishes `1.0.0-rc.N` while Python publishes `1.0.0rcN`.
 - **Python package**: recorder/diff SDK for `browser-use` flows. The local
   package metadata targets `dbar==1.0.0`; PyPI publication is a release gate.
   See [python/README.md](./python/README.md).

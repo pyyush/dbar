@@ -1,6 +1,6 @@
 {
   "name": "@pyyush/dbar",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Replayable proof for browser agents. Deterministic capture, replay, and verification for Playwright.",
   "author": "Piyush Vyas",
   "license": "Apache-2.0",

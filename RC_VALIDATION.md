@@ -18,11 +18,12 @@ chooses a later RC number.
 | Python sdist | `dbar-1.0.0rc1.tar.gz` |
 | Python wheel | `dbar-1.0.0rc1-py3-none-any.whl` |
 
-Important versioning blocker: npm prereleases use SemVer
-`1.0.0-rc.1`, while Python prereleases should use PEP 440 `1.0.0rc1`.
-Before tagging an RC, the release workflow must either normalize the Python
-version comparison or the release owner must use a tag/version scheme that is
-accepted by npm, Python packaging, and the workflow checks.
+Version policy: checked-in package metadata stays on final stable `1.0.0`.
+Before any RC build or publish, `.github/workflows/release.yml` runs
+`scripts/prepare-release-version.mjs` in the CI checkout. A tag
+`v1.0.0-rc.N` maps to npm SemVer `1.0.0-rc.N`, Python PEP 440 `1.0.0rcN`,
+npm dist-tag `next`, and a GitHub prerelease. A final tag `v1.0.0` maps to
+npm/Python `1.0.0`, npm dist-tag `latest`, and a full GitHub release.
 
 ## Pre-RC Local Gate
 
@@ -38,8 +39,13 @@ npm view @pyyush/dbar version --json
 python3 -m pip index versions dbar
 
 npm ci
+node scripts/prepare-release-version.mjs --tag v1.0.0 --check
 npm run release:verify
 ```
+
+The RC tag normalization path is covered by
+`src/__tests__/release-version-policy.test.ts`, which runs as part of
+`npm run release:verify`.
 
 Run the Python package lane in a fresh environment.
 
@@ -101,8 +107,8 @@ git status --short
 
 ## RC Build And Checksum Fields
 
-After the pre-RC gate passes and the version-alignment blocker is resolved,
-record each artifact and checksum before asking for validation.
+After the pre-RC gate passes, record each artifact and checksum before asking
+for validation.
 
 | Artifact | Path or URL | SHA-256 |
 |---|---|---|
@@ -210,6 +216,21 @@ release readiness.
 - [ ] Browser-harness remains optional interop only
 - [ ] Docs install commands match the published RC artifacts
 
+## Confirmed Repository And Registry Settings
+
+Confirmed by orchestrator on May 4, 2026:
+
+- `main` branch protection requires 1 review, CODEOWNERS review, stale review
+  dismissal, conversation resolution, linear history, no force-push/delete, and
+  enforce-admins.
+- Required status contexts are `typescript (20)`, `typescript (22)`,
+  `python (3.10)`, `python (3.11)`, `python (3.12)`, `browser-use`, and
+  `browserbase`.
+- Dependabot vulnerability alerts and security updates are enabled.
+- Secret scanning, push protection, and private vulnerability reporting are
+  enabled.
+- `npm whoami` reports `pyyush`.
+
 ## External Validator Instructions
 
 Ask at least one external developer to run the npm smoke in their own clean
@@ -253,14 +274,6 @@ The RC fails if any of these happen:
 
 - No RC tag, GitHub release, npm prerelease, PyPI prerelease, or checksums exist
   yet.
-- `package.json` is still `0.2.0` while Python package metadata is `1.0.0`;
-  an RC version-alignment pass is required before tagging.
-- npm SemVer prerelease and Python PEP 440 prerelease normalization must be
-  handled before the release workflow can verify a single RC tag.
 - PyPI project ownership/trusted publishing for `dbar` still needs release-owner
   confirmation.
-- npm provenance credentials still need release-owner confirmation.
-- GitHub branch protection, required checks, CODEOWNERS review, Dependabot
-  alerts, secret scanning, push protection, and private vulnerability reporting
-  still need remote confirmation.
 - At least one external developer must validate the RC before final `1.0.0`.

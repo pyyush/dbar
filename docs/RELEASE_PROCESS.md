@@ -9,8 +9,10 @@ or tag from a dirty branch.
 - The RC has been validated by at least one external developer.
 - `RC_VALIDATION.md` is filled in with the RC artifact URLs, checksums, CI run,
   external validator results, and any accepted residual risks.
-- `package.json`, `python/pyproject.toml`, and `python/dbar/_version.py` match
-  the intended tag version.
+- Checked-in `package.json`, `package-lock.json`, `python/pyproject.toml`,
+  and `python/dbar/_version.py` target the final stable version `1.0.0`.
+  Release-candidate tags are normalized by `scripts/prepare-release-version.mjs`
+  inside the release workflow before any package is built or published.
 - `npm view @pyyush/dbar version --json` and
   `python3 -m pip index versions dbar` have been checked immediately before
   release.
@@ -55,10 +57,13 @@ an npm sidecar test lane only until upstream publishes an auditable dependency
 set or DBAR adds a separate safe adapter package.
 
 For release candidates, use `RC_VALIDATION.md` as the operating checklist. The
-first RC placeholder is `v1.0.0-rc.1` / `@pyyush/dbar@1.0.0-rc.1` for npm and
-`dbar==1.0.0rc1` for Python. The release owner must resolve prerelease version
-normalization before tagging because npm SemVer and Python PEP 440 spell the RC
-version differently.
+checked-in release branch keeps package metadata at stable `1.0.0`; do not hand
+edit the branch to an RC version. For a tag `v1.0.0-rc.N`, the release workflow
+runs `scripts/prepare-release-version.mjs` and rewrites only the CI checkout to
+publish `@pyyush/dbar@1.0.0-rc.N` with npm dist-tag `next` and
+`dbar==1.0.0rcN` to PyPI. For a final tag `v1.0.0`, the same script verifies
+`@pyyush/dbar@1.0.0`, `dbar==1.0.0`, npm dist-tag `latest`, and a non-prerelease
+GitHub release.
 
 ## Tag-To-Publish Automation
 
@@ -67,28 +72,33 @@ Pushing a `v*` tag starts `.github/workflows/release.yml`.
 1. `verify` checks repository hygiene, version alignment, root package gates,
    Python package build and `twine check`, browser-use integration checks, and
    Browserbase integration checks. It also runs npm and Python package audits.
+   For RC tags, version alignment means npm SemVer and Python PEP 440 are
+   compared after workflow normalization, not by raw tag-string equality.
 2. `npm` publishes `@pyyush/dbar` with npm provenance after `verify` passes. It
-   requires `NPM_TOKEN` and `id-token: write`.
+   requires `NPM_TOKEN` and `id-token: write`. RC publishes use npm dist-tag
+   `next`; final publishes use `latest`.
 3. `pypi` publishes the Python package using PyPI trusted publishing after npm
    succeeds. It does not use a long-lived PyPI token. The first `dbar` publish
    depends on PyPI accepting the project name and the repository publisher
    being configured in PyPI.
 
-Do not create the final tag until the release owner confirms the registry
-credentials, PyPI trusted publisher, branch protection, and external RC
-validation evidence.
+Do not create the final tag until the release owner confirms PyPI trusted
+publishing/project ownership and external RC validation evidence. Orchestrator
+evidence on May 4, 2026 confirmed the GitHub repository settings below and
+local npm identity as `pyyush`; the tag workflow still has to prove the publish
+path during the RC.
 
 ## Repository Settings
 
-The GitHub repository should have:
+The GitHub repository should have, and orchestrator evidence says it now has:
 
 - branch protection on `main`
-- required pull request review from CODEOWNERS
-- required CI checks for TypeScript, Python, browser-use, and Browserbase
-- no force pushes or branch deletions on `main`
-- Dependabot version updates and security alerts enabled
+- 1 required review, CODEOWNERS review, stale review dismissal, and conversation
+  resolution
+- required status contexts: `typescript (20)`, `typescript (22)`,
+  `python (3.10)`, `python (3.11)`, `python (3.12)`, `browser-use`, and
+  `browserbase`
+- linear history, no force-push/delete, and enforce-admins
+- Dependabot vulnerability alerts and security updates enabled
 - secret scanning and push protection enabled
 - private vulnerability reporting enabled
-
-These settings are not fully provable from the local checkout. Treat them as
-release blockers until confirmed in GitHub.

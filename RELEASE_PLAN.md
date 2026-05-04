@@ -1242,7 +1242,7 @@ untracked release files. A scoped docs commit would include earlier work.
 - `python/pyproject.toml` now exposes only the `dev` extra.
 - `integrations/browser-use/requirements.txt` is intentionally comment-only so DBAR does not provide an active vulnerable install file.
 - Root README, Python README, browser-use integration README, `example.py`, and release-process docs now state that users must install and audit browser-use in their own application environment.
-- GitHub repository settings cannot be proven locally: branch protection, required checks, CODEOWNERS review, Dependabot alerts, secret scanning, push protection, and private vulnerability reporting still need remote confirmation before RC/final release.
+- GitHub repository settings were later confirmed by orchestrator evidence in Task 16, so this is no longer an RC blocker.
 
 **Exit criteria:**
 
@@ -1257,14 +1257,17 @@ untracked release files. A scoped docs commit would include earlier work.
 
 **Depends on:** Tasks 1 through 15
 
-**RC gate status:** Handoff prepared, but still blocked on version alignment, remote settings, registry credentials, an actual RC artifact, remote CI evidence, and external validation. The Task 15 Python `browser-use` optional-extra blocker is resolved by removing that extra from the release scope and making the release workflow assert that it is absent before any tag can publish.
+**RC gate status:** Handoff prepared, and the internal package-version blocker is resolved. Checked-in npm and Python metadata now target final stable `1.0.0`; the release workflow normalizes RC tags so `v1.0.0-rc.N` publishes npm `1.0.0-rc.N` with dist-tag `next` and Python `1.0.0rcN`, while final `v1.0.0` publishes npm/Python `1.0.0` with npm dist-tag `latest`. Remote repository settings and local npm identity are confirmed. Remaining blockers are PyPI trusted publishing/project ownership, an actual RC tag/package/release/checksum set, remote CI evidence from that tag, and external validation. The Task 15 Python `browser-use` optional-extra blocker is resolved by removing that extra from the release scope and making the release workflow assert that it is absent before any tag can publish.
 
 **Task 16 handoff artifacts:**
 
 - [x] `RC_VALIDATION.md` created with exact RC placeholders, install commands, smoke commands, CI evidence checklist, external-validator instructions, pass/fail criteria, checksum fields, and remaining blockers.
 - [x] `docs/RELEASE_PROCESS.md` points release owners to `RC_VALIDATION.md`.
 - [x] Browser-harness remains optional interop only; no dependency, backend, release gate, or CI matrix was added.
-- [ ] RC version alignment is resolved before tag creation. Current blocker: npm should use `1.0.0-rc.1`, Python should use PEP 440 `1.0.0rc1`, and the release workflow must compare normalized versions or use a compatible tag scheme.
+- [x] RC version alignment is resolved before tag creation. Checked-in metadata stays at final stable `1.0.0`; `scripts/prepare-release-version.mjs` rewrites CI checkouts for RC tags, maps npm SemVer to Python PEP 440, uses npm dist-tag `next` for RCs, uses `latest` for finals, and marks GitHub RC releases as prereleases.
+- [x] Remote GitHub settings confirmed by orchestrator on May 4, 2026: `main` requires 1 review, CODEOWNERS review, stale review dismissal, conversation resolution, linear history, no force-push/delete, enforce-admins, and required status contexts `typescript (20)`, `typescript (22)`, `python (3.10)`, `python (3.11)`, `python (3.12)`, `browser-use`, and `browserbase`.
+- [x] Repository security settings confirmed by orchestrator on May 4, 2026: Dependabot vulnerability alerts/security updates, secret scanning, push protection, and private vulnerability reporting are enabled.
+- [x] npm identity confirmed by orchestrator evidence: `npm whoami` reports `pyyush`.
 
 **Required evidence before RC:**
 
@@ -1279,6 +1282,9 @@ untracked release files. A scoped docs commit would include earlier work.
 - [ ] Python package build and twine check pass.
 - [ ] Docs are internally consistent and externally true.
 - [ ] Browser-harness remains optional interop only.
+- [x] Branch protection, required checks, CODEOWNERS review, Dependabot alerts,
+  secret scanning, push protection, and private vulnerability reporting are
+  enabled.
 
 **Exit criteria:**
 
