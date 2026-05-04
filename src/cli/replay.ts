@@ -8,6 +8,21 @@ import { basename } from "node:path";
 import { deserializeCapsuleArchive } from "../capsule/builder.js";
 import { DBAR } from "../sdk.js";
 import { calculateCost, type CostBreakdown } from "./cost.js";
+import { countFailedSteps, isBlockingDivergence } from "../replay/compare.js";
+import type { Divergence } from "../capsule/types.js";
+
+function getFirstDivergence(divergences: Divergence[], timeToDivergence?: number): Divergence | undefined {
+  if (timeToDivergence !== undefined) {
+    return divergences.find((divergence) => divergence.step === timeToDivergence) ?? divergences[0];
+  }
+
+  return divergences.reduce<Divergence | undefined>((earliest, divergence) => {
+    if (!earliest || divergence.step < earliest.step) {
+      return divergence;
+    }
+    return earliest;
+  }, undefined);
+}
 
 /**
  * Run a capsule replay and print results to stdout.
@@ -32,6 +47,10 @@ export async function runReplay(
     const result = await DBAR.replay(page, archive);
     const capsule = archive.manifest;
     const fileName = basename(capsulePath);
+    const failedSteps = countFailedSteps(result.divergences);
+    const successCount = capsule.steps.length - failedSteps;
+    const firstDivergence = getFirstDivergence(result.divergences, result.timeToDivergence);
+    const firstBlockingDivergence = result.divergences.find(isBlockingDivergence);
 
     let costBreakdown: CostBreakdown | undefined;
     if (options.cost) {
@@ -52,11 +71,17 @@ export async function runReplay(
       const output: Record<string, unknown> = {
         capsule: fileName,
         steps: capsule.steps.length,
-        successCount: capsule.steps.length - result.divergences.length,
+        successCount,
         totalSteps: capsule.steps.length,
         successRate: result.replaySuccessRate,
+        replaySuccessRate: result.replaySuccessRate,
+        determinismViolationRate: result.determinismViolationRate,
         durationMs: result.overheadMs,
         success: result.success,
+        failedStepCount: failedSteps,
+        timeToDivergence: result.timeToDivergence ?? null,
+        firstDivergence: firstDivergence ?? null,
+        firstBlockingDivergence: firstBlockingDivergence ?? null,
         divergences: result.divergences,
       };
       if (costBreakdown) {
@@ -64,9 +89,6 @@ export async function runReplay(
       }
       process.stdout.write(JSON.stringify(output, null, 2) + "\n");
     } else {
-      const successCount =
-        capsule.steps.length -
-        new Set(result.divergences.map((d) => d.step)).size;
       const pct =
         capsule.steps.length > 0
           ? ((successCount / capsule.steps.length) * 100).toFixed(0)
@@ -80,6 +102,10 @@ export async function runReplay(
         `Steps:       ${capsule.steps.length}`,
         `Success:     ${successCount}/${capsule.steps.length} (${pct}%)`,
         `Duration:    ${duration}s`,
+        `Blocking:    ${failedSteps} failed step${failedSteps === 1 ? "" : "s"}`,
+        (firstBlockingDivergence ?? firstDivergence)
+          ? `First ${firstBlockingDivergence ? "blocking " : ""}divergence: step ${(firstBlockingDivergence ?? firstDivergence)!.step} (${(firstBlockingDivergence ?? firstDivergence)!.type})`
+          : "First divergence: none",
       ];
 
       if (costBreakdown) {
@@ -99,6 +125,10 @@ export async function runReplay(
       }
 
       process.stdout.write(lines.join("\n") + "\n");
+    }
+
+    if (!result.success) {
+      process.exitCode = 1;
     }
   } finally {
     await browser.close();

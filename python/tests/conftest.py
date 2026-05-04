@@ -1,12 +1,15 @@
 """Mock browser-use objects for hermetic testing.
 
-These simple classes mimic the browser-use Agent, AgentHistory, and related
-types without importing browser-use. This keeps tests fast and dependency-free.
+These simple classes mimic the browser-use Agent, AgentHistory, BrowserSession,
+and related types without importing browser-use. This keeps tests fast and
+dependency-free while matching recent browser-use shapes more closely.
 """
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, List, Optional
 
 import pytest
@@ -22,11 +25,22 @@ class MockActionResult:
 
 
 @dataclass
+class MockActionModel:
+    """Mimics a browser-use action model with model_dump()."""
+
+    payload: dict[str, Any]
+
+    def model_dump(self, **_: Any) -> dict[str, Any]:
+        return self.payload
+
+
+@dataclass
 class MockAgentOutput:
     """Mimics browser-use AgentOutput (model response)."""
 
-    current_state: Optional[MockAgentState] = None
+    current_state: Optional["MockAgentState"] = None
     action: Optional[List[Any]] = None
+    next_goal: Optional[str] = None
 
 
 @dataclass
@@ -39,26 +53,71 @@ class MockAgentState:
 
 
 @dataclass
+class MockDOMInteractedElement:
+    """Mimics browser-use DOMInteractedElement."""
+
+    node_name: str = "button"
+    attributes: Optional[dict[str, str]] = field(default_factory=lambda: {"aria-label": "Submit"})
+    x_path: str = "/html/body/button"
+    element_hash: int = 123
+    stable_hash: Optional[int] = 123
+    ax_name: Optional[str] = "Submit"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_name": self.node_name,
+            "attributes": self.attributes,
+            "x_path": self.x_path,
+            "element_hash": self.element_hash,
+            "stable_hash": self.stable_hash,
+            "ax_name": self.ax_name,
+        }
+
+
+@dataclass
 class MockBrowserStateHistory:
-    """Mimics browser-use BrowserStateHistory (page state at a step)."""
+    """Mimics browser-use BrowserStateHistory (persisted history shape)."""
 
     url: str = "https://example.com"
     title: str = "Example"
     tabs: List[Any] = field(default_factory=list)
-    screenshot: Optional[str] = None  # base64 PNG
-    element_tree: Optional[MockDOMTree] = None
+    interacted_element: List[Any] = field(default_factory=list)
+    screenshot_path: Optional[str] = None
+
+    def get_screenshot(self) -> Optional[str]:
+        """Load screenshot from disk and return as base64 string."""
+        if not self.screenshot_path:
+            return None
+
+        path_obj = Path(self.screenshot_path)
+        if not path_obj.exists():
+            return None
+
+        return base64.b64encode(path_obj.read_bytes()).decode("utf-8")
 
 
 @dataclass
-class MockDOMTree:
-    """Mimics a simplified DOM element tree."""
+class MockDOMState:
+    """Mimics browser-use SerializedDOMState."""
 
-    tag_name: str = "html"
-    text: str = ""
-    children: List[Any] = field(default_factory=list)
+    text: str = "<html>hello</html>"
 
-    def to_string(self) -> str:
-        return f"<{self.tag_name}>{self.text}</{self.tag_name}>"
+    def eval_representation(self, include_attributes: Optional[list[str]] = None) -> str:
+        del include_attributes
+        return self.text
+
+    def llm_representation(self, include_attributes: Optional[list[str]] = None) -> str:
+        del include_attributes
+        return self.text
+
+
+@dataclass
+class MockBrowserStateSummary:
+    """Mimics browser-use BrowserStateSummary (live browser state)."""
+
+    url: str = "https://example.com"
+    screenshot: Optional[str] = None
+    dom_state: Optional[MockDOMState] = None
 
 
 @dataclass
@@ -88,10 +147,77 @@ class MockHistoryList:
 
 
 @dataclass
+class MockBrowserSession:
+    """Mimics browser-use BrowserSession with live state access."""
+
+    live_state: Optional[MockBrowserStateSummary] = None
+
+    async def get_browser_state_summary(self, include_screenshot: bool = True) -> MockBrowserStateSummary:
+        """Return a browser state summary, optionally dropping the screenshot."""
+        if self.live_state is None:
+            raise RuntimeError("No live state configured")
+
+        screenshot = self.live_state.screenshot if include_screenshot else None
+        return MockBrowserStateSummary(
+            url=self.live_state.url,
+            screenshot=screenshot,
+            dom_state=self.live_state.dom_state,
+        )
+
+
+@dataclass
 class MockAgent:
-    """Mimics browser-use Agent with a history attribute."""
+    """Mimics browser-use Agent with history and browser_session attributes."""
 
     history: MockHistoryList = field(default_factory=MockHistoryList)
+    browser_session: MockBrowserSession = field(default_factory=MockBrowserSession)
+
+
+def append_mock_step(
+    agent: MockAgent,
+    *,
+    url: str = "https://example.com",
+    title: str = "Example",
+    live_dom_text: str = "<html>hello</html>",
+    live_screenshot: Optional[str] = None,
+    screenshot_path: Optional[str] = None,
+    action_payload: Optional[dict[str, Any]] = None,
+    thinking: Optional[str] = None,
+    interacted_element: Optional[List[Any]] = None,
+) -> MockAgent:
+    """Append a step to an existing mock agent and update its live state."""
+    model_output = None
+    if action_payload is not None or thinking:
+        agent_state = MockAgentState(next_goal=thinking or "")
+        actions = [MockActionModel(action_payload)] if action_payload is not None else None
+        model_output = MockAgentOutput(
+            current_state=agent_state,
+            action=actions,
+            next_goal=thinking,
+        )
+
+    state = MockBrowserStateHistory(
+        url=url,
+        title=title,
+        interacted_element=interacted_element or [MockDOMInteractedElement()],
+        screenshot_path=screenshot_path,
+    )
+    result = [MockActionResult(extracted_content="ok")]
+    metadata = MockStepMetadata(step_id=len(agent.history.history))
+    agent.history.history.append(
+        MockAgentHistory(
+            state=state,
+            model_output=model_output,
+            result=result,
+            metadata=metadata,
+        )
+    )
+    agent.browser_session.live_state = MockBrowserStateSummary(
+        url=url,
+        screenshot=live_screenshot,
+        dom_state=MockDOMState(text=live_dom_text),
+    )
+    return agent
 
 
 def make_mock_agent(
@@ -103,45 +229,19 @@ def make_mock_agent(
     thinking: Optional[str] = None,
     num_steps: int = 1,
 ) -> MockAgent:
-    """Create a MockAgent with pre-populated history steps.
-
-    Args:
-        url: Page URL for each step.
-        title: Page title for each step.
-        screenshot: Base64 screenshot string, or None.
-        dom_text: Raw DOM text for hashing.
-        action_text: Action description, or None.
-        thinking: Model thinking text, or None.
-        num_steps: Number of history steps to create.
-
-    Returns:
-        A MockAgent ready for use in recorder tests.
-    """
+    """Create a mock agent with pre-populated history steps."""
     agent = MockAgent()
-    for i in range(num_steps):
-        dom_tree = MockDOMTree(text=dom_text)
-        state = MockBrowserStateHistory(
+    action_payload = {"click": {"text": action_text}} if action_text else None
+    for _ in range(num_steps):
+        append_mock_step(
+            agent,
             url=url,
             title=title,
-            screenshot=screenshot,
-            element_tree=dom_tree,
+            live_dom_text=dom_text,
+            live_screenshot=screenshot,
+            action_payload=action_payload,
+            thinking=thinking,
         )
-        model_output = None
-        if action_text or thinking:
-            agent_state = MockAgentState(next_goal=thinking or "")
-            model_output = MockAgentOutput(
-                current_state=agent_state,
-                action=[{"action": action_text}] if action_text else None,
-            )
-        result = [MockActionResult(extracted_content=action_text)]
-        metadata = MockStepMetadata(step_id=i)
-        entry = MockAgentHistory(
-            state=state,
-            model_output=model_output,
-            result=result,
-            metadata=metadata,
-        )
-        agent.history.history.append(entry)
     return agent
 
 
@@ -164,6 +264,6 @@ def mock_agent_no_action() -> MockAgent:
 
 
 @pytest.fixture
-def tmp_output_dir(tmp_path):
+def tmp_output_dir(tmp_path: Path) -> str:
     """Provide a temporary output directory for capsule writing."""
     return str(tmp_path / "capsule_output")

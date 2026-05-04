@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createHash } from "node:crypto";
 import {
   parseArgs,
+  parseStepSignal,
   cleanSignalFiles,
   waitForSignal,
+  resolvePageForCapture,
   captureStepSnapshot,
   buildManifest,
   type StepRecord,
@@ -24,33 +25,58 @@ vi.mock("node:fs", async () => {
 
 describe("parseArgs", () => {
   const originalArgv = process.argv;
+  const originalEnv = process.env.BROWSER_USE_CDP_URL;
 
   afterEach(() => {
     process.argv = originalArgv;
+    if (originalEnv === undefined) {
+      delete process.env.BROWSER_USE_CDP_URL;
+    } else {
+      process.env.BROWSER_USE_CDP_URL = originalEnv;
+    }
   });
 
-  it("shouldUseDefaultsWhenNoArgsProvided", () => {
-    // Given no CLI arguments beyond node and script
-    process.argv = ["node", "capture.ts"];
+  it("shouldReadCdpUrlFromFirstArg", () => {
+    process.argv = ["node", "capture.ts", "http://127.0.0.1:9333/", "/tmp/out"];
 
-    // When parsing args
     const args = parseArgs();
 
-    // Then defaults are used
-    expect(args.cdpUrl).toBe("http://localhost:9222");
-    expect(args.outputDir).toContain("dbar-snapshots");
-  });
-
-  it("shouldParseCustomCdpUrlAndOutputDir", () => {
-    // Given custom CLI arguments
-    process.argv = ["node", "capture.ts", "http://localhost:9333", "/tmp/out"];
-
-    // When parsing args
-    const args = parseArgs();
-
-    // Then custom values are used
-    expect(args.cdpUrl).toBe("http://localhost:9333");
+    expect(args.cdpUrl).toBe("http://127.0.0.1:9333/");
     expect(args.outputDir).toBe("/tmp/out");
+  });
+
+  it("shouldReadCdpUrlFromEnvironmentWhenArgIsMissing", () => {
+    process.argv = ["node", "capture.ts", "/tmp/out"];
+    process.env.BROWSER_USE_CDP_URL = "http://127.0.0.1:9444/";
+
+    const args = parseArgs();
+
+    expect(args.cdpUrl).toBe("http://127.0.0.1:9444/");
+    expect(args.outputDir).toBe("/tmp/out");
+  });
+
+  it("shouldThrowWhenNoCdpUrlIsProvided", () => {
+    process.argv = ["node", "capture.ts"];
+    delete process.env.BROWSER_USE_CDP_URL;
+
+    expect(() => parseArgs()).toThrow(/CDP URL is required/);
+  });
+});
+
+describe("parseStepSignal", () => {
+  it("shouldParsePlainTextLabels", () => {
+    expect(parseStepSignal("step-4")).toEqual({ label: "step-4" });
+  });
+
+  it("shouldParseJsonPayloadsWithTargetId", () => {
+    expect(parseStepSignal('{"label":"step-4","targetId":"target-123"}')).toEqual({
+      label: "step-4",
+      targetId: "target-123",
+    });
+  });
+
+  it("shouldDefaultEmptyPayloadToStep", () => {
+    expect(parseStepSignal("   ")).toEqual({ label: "step" });
   });
 });
 
@@ -61,23 +87,17 @@ describe("cleanSignalFiles", () => {
   });
 
   it("shouldRemoveExistingSignalFiles", () => {
-    // Given both signal files exist
     vi.mocked(fs.existsSync).mockReturnValue(true);
 
-    // When cleaning
     cleanSignalFiles();
 
-    // Then both are removed
     expect(fs.unlinkSync).toHaveBeenCalledWith(".dbar-step");
     expect(fs.unlinkSync).toHaveBeenCalledWith(".dbar-finish");
   });
 
   it("shouldNotThrowWhenSignalFilesDoNotExist", () => {
-    // Given no signal files exist
     vi.mocked(fs.existsSync).mockReturnValue(false);
 
-    // When cleaning
-    // Then it does not throw
     expect(() => cleanSignalFiles()).not.toThrow();
     expect(fs.unlinkSync).not.toHaveBeenCalled();
   });
@@ -96,68 +116,92 @@ describe("waitForSignal", () => {
   });
 
   it("shouldResolveWithStepWhenStepSignalAppears", async () => {
-    // Given step signal appears on the second poll
     let callCount = 0;
     vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-      const p = String(path);
-      if (p === ".dbar-finish") return false;
-      if (p === ".dbar-step") {
+      const current = String(path);
+      if (current === ".dbar-finish") return false;
+      if (current === ".dbar-step") {
         callCount++;
         return callCount >= 2;
       }
       return false;
     });
-    vi.mocked(fs.readFileSync).mockReturnValue("step-1");
+    vi.mocked(fs.readFileSync).mockReturnValue('{"label":"step-1","targetId":"target-1"}');
 
-    // When waiting for a signal
     const promise = waitForSignal();
     await vi.advanceTimersByTimeAsync(600);
-
     const result = await promise;
 
-    // Then it resolves with step type and the label
-    expect(result).toEqual({ type: "step", label: "step-1" });
+    expect(result).toEqual({ type: "step", label: "step-1", targetId: "target-1" });
     expect(fs.unlinkSync).toHaveBeenCalledWith(".dbar-step");
   });
 
   it("shouldResolveWithFinishWhenFinishSignalAppears", async () => {
-    // Given finish signal appears on the first poll
     vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
       return String(path) === ".dbar-finish";
     });
 
-    // When waiting
     const promise = waitForSignal();
     await vi.advanceTimersByTimeAsync(300);
-
     const result = await promise;
 
-    // Then it resolves with finish type
     expect(result).toEqual({ type: "finish" });
   });
+});
 
-  it("shouldUseDefaultLabelWhenStepFileIsEmpty", async () => {
-    // Given step signal with empty content
-    vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-      if (String(path) === ".dbar-finish") return false;
-      return String(path) === ".dbar-step";
-    });
-    vi.mocked(fs.readFileSync).mockReturnValue("  ");
+describe("resolvePageForCapture", () => {
+  it("shouldMatchTheRequestedTargetId", async () => {
+    const sessionA = {
+      send: vi.fn().mockResolvedValue({ targetInfo: { targetId: "target-a" } }),
+      detach: vi.fn().mockResolvedValue(undefined),
+    };
+    const sessionB = {
+      send: vi.fn().mockResolvedValue({ targetInfo: { targetId: "target-b" } }),
+      detach: vi.fn().mockResolvedValue(undefined),
+    };
+    const pageA = {
+      url: () => "https://example.com/a",
+      context: () => ({ newCDPSession: vi.fn().mockResolvedValue(sessionA) }),
+    };
+    const pageB = {
+      url: () => "https://example.com/b",
+      context: () => ({ newCDPSession: vi.fn().mockResolvedValue(sessionB) }),
+    };
+    const browser = {
+      contexts: () => [{ pages: () => [pageA, pageB] }],
+    };
 
-    // When waiting
-    const promise = waitForSignal();
-    await vi.advanceTimersByTimeAsync(300);
+    const resolved = await resolvePageForCapture(browser as never, "target-b");
 
-    const result = await promise;
+    expect(resolved.page).toBe(pageB);
+    expect(resolved.cdpSession).toBe(sessionB);
+    expect(resolved.matchedTargetId).toBe(true);
+    expect(sessionA.detach).toHaveBeenCalledTimes(1);
+  });
 
-    // Then label defaults to "step"
-    expect(result).toEqual({ type: "step", label: "step" });
+  it("shouldFallbackToFirstAvailablePageWhenTargetIsMissing", async () => {
+    const session = {
+      send: vi.fn().mockResolvedValue({ targetInfo: { targetId: "target-a" } }),
+      detach: vi.fn().mockResolvedValue(undefined),
+    };
+    const page = {
+      url: () => "https://example.com/a",
+      context: () => ({ newCDPSession: vi.fn().mockResolvedValue(session) }),
+    };
+    const browser = {
+      contexts: () => [{ pages: () => [page] }],
+    };
+
+    const resolved = await resolvePageForCapture(browser as never, "missing-target");
+
+    expect(resolved.page).toBe(page);
+    expect(resolved.cdpSession).toBe(session);
+    expect(resolved.matchedTargetId).toBe(false);
   });
 });
 
 describe("captureStepSnapshot", () => {
   it("shouldCaptureDomA11yAndScreenshotWithHashes", async () => {
-    // Given mock CDP session and Page
     const domData = { documents: [], strings: [] };
     const mockCdp = {
       send: vi.fn().mockImplementation((method: string) => {
@@ -173,10 +217,8 @@ describe("captureStepSnapshot", () => {
       }),
     };
 
-    // When capturing a step snapshot
-    const record = await captureStepSnapshot(mockCdp as any, "step-1", 1);
+    const record = await captureStepSnapshot(mockCdp as never, "step-1", 1);
 
-    // Then it returns a StepRecord with all three snapshots hashed
     expect(record.label).toBe("step-1");
     expect(record.stepNumber).toBe(1);
     expect(record.domHash).toMatch(/^[a-f0-9]{64}$/);
@@ -186,7 +228,6 @@ describe("captureStepSnapshot", () => {
   });
 
   it("shouldProduceDeterministicHashesForSameInput", async () => {
-    // Given two identical CDP responses
     const domData = { documents: [{ nodes: [1] }], strings: ["a"] };
     const a11yData = { nodes: [{ role: { value: "button" } }] };
     const screenshotBase64 = Buffer.from("same-png").toString("base64");
@@ -201,20 +242,17 @@ describe("captureStepSnapshot", () => {
       }),
     });
 
-    // When capturing twice
-    const r1 = await captureStepSnapshot(makeCdp() as any, "s1", 1);
-    const r2 = await captureStepSnapshot(makeCdp() as any, "s1", 1);
+    const first = await captureStepSnapshot(makeCdp() as never, "s1", 1);
+    const second = await captureStepSnapshot(makeCdp() as never, "s1", 1);
 
-    // Then hashes are identical
-    expect(r1.domHash).toBe(r2.domHash);
-    expect(r1.a11yHash).toBe(r2.a11yHash);
-    expect(r1.screenshotHash).toBe(r2.screenshotHash);
+    expect(first.domHash).toBe(second.domHash);
+    expect(first.a11yHash).toBe(second.a11yHash);
+    expect(first.screenshotHash).toBe(second.screenshotHash);
   });
 });
 
 describe("buildManifest", () => {
   it("shouldBuildManifestWithAllSteps", () => {
-    // Given step records
     const steps: StepRecord[] = [
       {
         label: "step-1",
@@ -234,12 +272,10 @@ describe("buildManifest", () => {
       },
     ];
 
-    // When building manifest
-    const manifest = buildManifest(steps, "http://localhost:9222");
+    const manifest = buildManifest(steps, "http://127.0.0.1:9333/");
 
-    // Then it contains all steps and metadata
     expect(manifest.version).toBe("1.0.0");
-    expect(manifest.cdpUrl).toBe("http://localhost:9222");
+    expect(manifest.cdpUrl).toBe("http://127.0.0.1:9333/");
     expect(manifest.steps).toHaveLength(2);
     expect(manifest.steps[0]!.label).toBe("step-1");
     expect(manifest.steps[1]!.domHash).toBe("ddd");
@@ -248,10 +284,8 @@ describe("buildManifest", () => {
   });
 
   it("shouldSetCaptureModeLimitations", () => {
-    // Given empty steps
-    const manifest = buildManifest([], "http://localhost:9222");
+    const manifest = buildManifest([], "http://127.0.0.1:9333/");
 
-    // Then manifest documents limitations
     expect(manifest.captureMode).toBe("snapshot-only");
     expect(manifest.limitations).toContain("no-network-recording");
     expect(manifest.limitations).toContain("no-virtual-time");

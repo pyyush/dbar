@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
-import { DeterminismCapsuleSchema, type ValidationResult } from "./types.js";
+import {
+  DeterminismCapsuleSchema,
+  type DeterminismCapsule,
+  type ValidationResult,
+} from "./types.js";
 import type { CapsuleArchive } from "./builder.js";
 
 /**
@@ -19,6 +23,8 @@ import type { CapsuleArchive } from "./builder.js";
  *    the stored SHA-256 must match the re-computed hash.
  * 8. unsupportedState — warns when the list is empty, because the recorder
  *    should always declare which state types it does not capture.
+ * 9. Safe-sharing warnings — likely sensitive full-fidelity fields are reported
+ *    as advisory warnings without changing replay behavior.
  *
  * @param archive - The capsule archive to validate.
  * @returns A {@link ValidationResult} where `valid` is `true` only when there
@@ -142,5 +148,101 @@ export function validateCapsule(archive: CapsuleArchive): ValidationResult {
     });
   }
 
+  // 9. Safe-sharing warnings — capsules are full-fidelity replay artifacts by
+  //    default. These warnings make likely sensitive contents explicit without
+  //    mutating data that replay depends on.
+  addSafeSharingWarnings(capsule, warnings);
+
   return { valid: errors.length === 0, errors, warnings };
+}
+
+function addSafeSharingWarnings(
+  capsule: DeterminismCapsule,
+  warnings: Array<{ path: string; message: string }>
+): void {
+  if (capsule.initialState.cookies.length > 0) {
+    warnings.push({
+      path: "initialState.cookies",
+      message:
+        "Capsule contains cookies for full-fidelity replay; treat as sensitive and unsafe to share without a scrubbed re-recording.",
+    });
+  }
+
+  if (capsule.initialState.localStorage.some((origin) => origin.entries.length > 0)) {
+    warnings.push({
+      path: "initialState.localStorage",
+      message:
+        "Capsule contains localStorage values for full-fidelity replay; treat as sensitive and unsafe to share without a scrubbed re-recording.",
+    });
+  }
+
+  if (hasQueryString(capsule.initialState.url)) {
+    warnings.push({
+      path: "initialState.url",
+      message:
+        "Initial URL contains query values; query strings often carry tokens, IDs, or PII.",
+    });
+  }
+
+  for (let i = 0; i < capsule.networkTranscript.entries.length; i++) {
+    const entry = capsule.networkTranscript.entries[i]!;
+
+    if (hasQueryString(entry.url)) {
+      warnings.push({
+        path: `networkTranscript.entries[${i}].url`,
+        message:
+          "Network URL contains query values; query strings often carry tokens, IDs, or PII.",
+      });
+    }
+
+    addRedactedHeaderWarnings(`networkTranscript.entries[${i}].headers`, entry.headers, warnings);
+
+    if (entry.response) {
+      addRedactedHeaderWarnings(
+        `networkTranscript.entries[${i}].response.headers`,
+        entry.response.headers,
+        warnings
+      );
+
+      warnings.push({
+        path: `networkTranscript.entries[${i}].response.body`,
+        message:
+          "Response body is retained for full-fidelity replay and may contain secrets or PII; unsafe to share without a scrubbed re-recording.",
+      });
+    }
+  }
+
+  for (const step of capsule.steps) {
+    if (step.artifacts.screenshot) {
+      warnings.push({
+        path: `steps[${step.index}].artifacts.screenshot`,
+        message:
+          "Screenshot artifact may contain visible secrets or PII; treat as sensitive before sharing.",
+      });
+    }
+  }
+}
+
+function addRedactedHeaderWarnings(
+  pathPrefix: string,
+  headers: Record<string, string>,
+  warnings: Array<{ path: string; message: string }>
+): void {
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === "[REDACTED]") {
+      warnings.push({
+        path: `${pathPrefix}.${name}`,
+        message:
+          "Sensitive header value was redacted by DBAR; other capsule fields may still contain sensitive data.",
+      });
+    }
+  }
+}
+
+function hasQueryString(rawUrl: string): boolean {
+  try {
+    return new URL(rawUrl).search.length > 0;
+  } catch {
+    return rawUrl.includes("?");
+  }
 }

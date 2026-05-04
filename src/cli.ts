@@ -22,6 +22,7 @@ const HELP_TEXT = `DBAR — Deterministic Browser Agent Runtime
 Usage:
   dbar replay <capsule-path> [--cost] [--json]
     Replay a capsule and output results.
+    Exit code 1 means a blocking divergence was found.
     --cost    Show cost comparison (original vs. replay)
     --json    Output results as JSON
 

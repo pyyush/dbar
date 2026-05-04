@@ -1,8 +1,8 @@
 """Capsule loading, diffing, and summarization.
 
 A Capsule represents a recorded browser-use session stored as JSON.
-It supports step-by-step comparison of DOM and screenshot hashes
-to detect determinism divergences between runs.
+It supports step-by-step comparison of page-state and screenshot hashes
+to detect run-to-run divergences.
 """
 
 from __future__ import annotations

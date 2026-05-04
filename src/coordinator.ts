@@ -115,6 +115,7 @@ export class Coordinator {
       onUnsupportedTraffic: (d) => trace.recordDivergence(d.step, d.type, d.details),
       onFetchResolved: () => timeVirtualizer.trackFetchResolution(),
     });
+    recorder.setStepIndex(0);
 
     const timeVirtualizer = new TimeVirtualizer(cdpSession, {
       stepBudgetMs: options.stepBudgetMs ?? 10000,
@@ -234,6 +235,7 @@ export class Coordinator {
     // 7. Suspend virtual time (advance mode) so navigation works between steps
     await state.timeVirtualizer.suspend();
     state.stepIndex++;
+    state.recorder.setStepIndex(state.stepIndex);
 
     const captureMs = Date.now() - stepStart;
     return { index, label, observables, warnings, captureMs };

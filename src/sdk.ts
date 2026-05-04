@@ -20,11 +20,12 @@ import { validateCapsule } from "./capsule/validator.js";
 import { Coordinator, type CaptureOptions, type CaptureSessionState } from "./coordinator.js";
 import { NetworkReplayer } from "./network/replayer.js";
 import { TimeVirtualizer } from "./time/virtualizer.js";
-import { captureDOMSnapshot } from "./snapshot/dom.js";
-import { captureAccessibilitySnapshot } from "./snapshot/accessibility.js";
-import { captureScreenshot } from "./snapshot/screenshot.js";
 import { restoreStorageState } from "./snapshot/state.js";
 import { TraceTimeline } from "./telemetry/trace.js";
+import {
+  compareReplayStep,
+  isBlockingDivergence,
+} from "./replay/compare.js";
 
 // ---------------------------------------------------------------------------
 // Transcript hydration — resolve deduplicated body paths to base64 content
@@ -214,8 +215,7 @@ interface ReplaySessionState {
  * @example
  * ```ts
  * const rs = await DBAR.startReplay(page, archive);
- * await page.goto("https://example.com");
- * const r0 = await rs.step(); // compares against capsule step 0
+ * const r0 = await rs.step(); // compares against capsule step 0 after initial state restore
  * await page.click("a.nav");
  * const r1 = await rs.step(); // compares against capsule step 1
  * const result = await rs.finish();
@@ -254,8 +254,6 @@ export class ReplaySession {
     const expectedStep = capsule.steps[state.stepIndex];
     if (!expectedStep) throw new Error(`No more steps in capsule (have ${capsule.steps.length})`);
 
-    const stepDivergences: Divergence[] = [];
-
     state.replayer.setStepIndex(expectedStep.index);
 
     // Start virtual time on first step (deferred from startReplay to avoid
@@ -265,88 +263,37 @@ export class ReplaySession {
       state.timeVirtualizerStarted = true;
     }
 
-    // Pause time, wait for quiescence
-    await state.timeVirtualizer.pause();
-    const { quiescent } = await state.timeVirtualizer.waitForQuiescence();
-    if (!quiescent) {
-      const d: Divergence = { step: expectedStep.index, type: "quiescence_timeout" };
-      stepDivergences.push(d);
-      state.divergences.push(d);
-    }
+    const comparison = await compareReplayStep({
+      expectedStep,
+      page: state.page,
+      cdpSession: state.cdpSession,
+      network: state.replayer,
+      timeVirtualizer: state.timeVirtualizer,
+      options: state.options,
+    });
 
-    // Capture live observables
-    const [domResult, a11yResult, screenshotResult] = await Promise.all([
-      captureDOMSnapshot(state.cdpSession),
-      captureAccessibilitySnapshot(state.page, state.cdpSession),
-      captureScreenshot(state.page, { masks: state.options.screenshotMasks }),
-    ]);
+    state.divergences.push(...comparison.recordableDivergences);
 
-    const liveObservables: StepObservables = {
-      domSnapshotHash: domResult.hash,
-      accessibilityHash: a11yResult.hash,
-      screenshotHash: screenshotResult.hash,
-      networkDigest: expectedStep.observables.networkDigest,
-    };
-
-    // Compare observables
-    let stepDiverged = false;
-
-    if (liveObservables.domSnapshotHash !== expectedStep.observables.domSnapshotHash) {
-      stepDiverged = true;
-      const d: Divergence = {
-        step: expectedStep.index,
-        type: "dom_mismatch",
-        expected: expectedStep.observables.domSnapshotHash,
-        actual: liveObservables.domSnapshotHash,
-      };
-      stepDivergences.push(d);
-      state.divergences.push(d);
-    }
-
-    if (liveObservables.accessibilityHash !== expectedStep.observables.accessibilityHash) {
-      stepDiverged = true;
-      const d: Divergence = {
-        step: expectedStep.index,
-        type: "accessibility_mismatch",
-        expected: expectedStep.observables.accessibilityHash,
-        actual: liveObservables.accessibilityHash,
-      };
-      stepDivergences.push(d);
-      state.divergences.push(d);
-    }
-
-    if (
-      state.options.compareScreenshots &&
-      liveObservables.screenshotHash !== expectedStep.observables.screenshotHash
-    ) {
-      const d: Divergence = {
-        step: expectedStep.index,
-        type: "screenshot_mismatch",
-        details: "screenshot hash mismatch (advisory)",
-        expected: expectedStep.observables.screenshotHash,
-        actual: liveObservables.screenshotHash,
-      };
-      stepDivergences.push(d);
-      state.divergences.push(d);
-    }
-
-    if (!stepDiverged) {
+    if (comparison.matched) {
       state.matchedSteps++;
     } else if (state.timeToDivergence === undefined) {
       state.timeToDivergence = expectedStep.index;
     }
 
-    state.trace.recordSnapshot(expectedStep.index, liveObservables);
+    state.trace.recordSnapshot(expectedStep.index, comparison.liveObservables);
 
     // Suspend virtual time (advance mode) so navigation works between steps
     await state.timeVirtualizer.suspend();
     state.stepIndex++;
+    if (state.stepIndex < capsule.steps.length) {
+      state.replayer.setStepIndex(capsule.steps[state.stepIndex]!.index);
+    }
 
     return {
       index: expectedStep.index,
-      matched: !stepDiverged,
-      divergences: stepDivergences,
-      liveObservables,
+      matched: comparison.matched,
+      divergences: comparison.stepDivergences,
+      liveObservables: comparison.liveObservables,
       expectedObservables: expectedStep.observables,
     };
   }
@@ -377,9 +324,10 @@ export class ReplaySession {
     const totalSteps = state.archive.manifest.steps.length;
     const replaySuccessRate = totalSteps > 0 ? state.matchedSteps / totalSteps : 1;
     const determinismViolationRate = totalSteps > 0 ? 1 - replaySuccessRate : 0;
+    const hasBlockingDivergence = state.divergences.some(isBlockingDivergence);
 
     return {
-      success: state.divergences.length === 0,
+      success: !hasBlockingDivergence,
       replaySuccessRate,
       determinismViolationRate,
       timeToDivergence: state.timeToDivergence,
@@ -408,8 +356,9 @@ export class ReplaySession {
  *
  * // Step-by-step replay (for multi-step capsules)
  * const rs = await DBAR.startReplay(replayPage, archive);
- * await replayPage.goto("https://example.com");
  * const r0 = await rs.step();
+ * await replayPage.click("a.nav");
+ * const r1 = await rs.step();
  * const result = await rs.finish();
  *
  * // Auto-replay (single-step capsules only)
@@ -475,6 +424,9 @@ export class DBAR {
     // Start network interception (but NOT virtual time — that's deferred to
     // first step() to avoid blocking page.goto with networkidle)
     await replayer.start();
+    if (capsule.steps.length > 0) {
+      replayer.setStepIndex(capsule.steps[0]!.index);
+    }
 
     // Restore cookies/localStorage then navigate to initial URL
     await restoreStorageState(page, capsule.initialState);
@@ -537,6 +489,9 @@ export class DBAR {
     });
 
     await replayer.start();
+    if (capsule.steps.length > 0) {
+      replayer.setStepIndex(capsule.steps[0]!.index);
+    }
     // TimeVirtualizer deferred to first step (same as capture)
 
     // Restore initial state (navigation goes through replayer's transcript)
@@ -547,75 +502,37 @@ export class DBAR {
     let timeToDivergence: number | undefined;
     let tvStarted = false;
 
-    for (const expectedStep of capsule.steps) {
+    for (let i = 0; i < capsule.steps.length; i++) {
+      const expectedStep = capsule.steps[i]!;
       replayer.setStepIndex(expectedStep.index);
 
       if (!tvStarted) {
         await timeVirtualizer.start();
         tvStarted = true;
       }
-      await timeVirtualizer.pause();
-      const { quiescent } = await timeVirtualizer.waitForQuiescence();
-      if (!quiescent) {
-        divergences.push({ step: expectedStep.index, type: "quiescence_timeout" });
-      }
+      const comparison = await compareReplayStep({
+        expectedStep,
+        page,
+        cdpSession,
+        network: replayer,
+        timeVirtualizer,
+        options,
+      });
 
-      const [domResult, a11yResult, screenshotResult] = await Promise.all([
-        captureDOMSnapshot(cdpSession),
-        captureAccessibilitySnapshot(page, cdpSession),
-        captureScreenshot(page, { masks: options.screenshotMasks }),
-      ]);
+      divergences.push(...comparison.recordableDivergences);
 
-      const liveObservables: StepObservables = {
-        domSnapshotHash: domResult.hash,
-        accessibilityHash: a11yResult.hash,
-        screenshotHash: screenshotResult.hash,
-        networkDigest: expectedStep.observables.networkDigest,
-      };
-
-      let stepDiverged = false;
-
-      if (liveObservables.domSnapshotHash !== expectedStep.observables.domSnapshotHash) {
-        stepDiverged = true;
-        divergences.push({
-          step: expectedStep.index,
-          type: "dom_mismatch",
-          expected: expectedStep.observables.domSnapshotHash,
-          actual: liveObservables.domSnapshotHash,
-        });
-      }
-
-      if (liveObservables.accessibilityHash !== expectedStep.observables.accessibilityHash) {
-        stepDiverged = true;
-        divergences.push({
-          step: expectedStep.index,
-          type: "accessibility_mismatch",
-          expected: expectedStep.observables.accessibilityHash,
-          actual: liveObservables.accessibilityHash,
-        });
-      }
-
-      if (
-        options.compareScreenshots &&
-        liveObservables.screenshotHash !== expectedStep.observables.screenshotHash
-      ) {
-        divergences.push({
-          step: expectedStep.index,
-          type: "screenshot_mismatch",
-          details: "screenshot hash mismatch (advisory)",
-          expected: expectedStep.observables.screenshotHash,
-          actual: liveObservables.screenshotHash,
-        });
-      }
-
-      if (!stepDiverged) {
+      if (comparison.matched) {
         matchedSteps++;
       } else if (timeToDivergence === undefined) {
         timeToDivergence = expectedStep.index;
       }
 
-      trace.recordSnapshot(expectedStep.index, liveObservables);
+      trace.recordSnapshot(expectedStep.index, comparison.liveObservables);
       await timeVirtualizer.suspend();
+      const nextStep = capsule.steps[i + 1];
+      if (nextStep) {
+        replayer.setStepIndex(nextStep.index);
+      }
     }
 
     const replayerDivergences = replayer.getDivergences();
@@ -632,9 +549,10 @@ export class DBAR {
     const totalSteps = capsule.steps.length;
     const replaySuccessRate = totalSteps > 0 ? matchedSteps / totalSteps : 1;
     const determinismViolationRate = totalSteps > 0 ? 1 - replaySuccessRate : 0;
+    const hasBlockingDivergence = divergences.some(isBlockingDivergence);
 
     return {
-      success: divergences.length === 0,
+      success: !hasBlockingDivergence,
       replaySuccessRate,
       determinismViolationRate,
       timeToDivergence,

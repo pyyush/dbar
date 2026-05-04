@@ -1,4 +1,5 @@
 import type { CDPSession } from "playwright-core";
+import { createHash } from "node:crypto";
 
 import type { NetworkTranscript, NetworkEntry, Divergence } from "../capsule/types.js";
 import { hashRequest } from "./types.js";
@@ -43,6 +44,8 @@ export class NetworkReplayer {
   private listeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
   /** Entries indexed by "hash:occurrenceIndex" for O(1) lookup. */
   private entryIndex = new Map<string, NetworkEntry>();
+  /** Live network activity attributed to each replay step for digest comparison. */
+  private stepEntries = new Map<number, Array<{ requestHash: string; terminal: string }>>();
 
   constructor(
     cdpSession: CDPSession,
@@ -88,6 +91,21 @@ export class NetworkReplayer {
     return [...this.divergences];
   }
 
+  /** Returns divergences recorded for a specific step. */
+  getDivergencesForStep(stepIndex: number): Divergence[] {
+    return this.divergences.filter((divergence) => divergence.step === stepIndex);
+  }
+
+  /** Returns the actual network digest observed for a specific step. */
+  getStepNetworkDigest(stepIndex: number): string {
+    const hash = createHash("sha256");
+    for (const entry of this.stepEntries.get(stepIndex) ?? []) {
+      hash.update(entry.requestHash);
+      hash.update(entry.terminal);
+    }
+    return hash.digest("hex");
+  }
+
   private async onRequestPaused(event: any): Promise<void> {
     const request = event.request;
     const hash = hashRequest({
@@ -104,6 +122,7 @@ export class NetworkReplayer {
     const entry = this.entryIndex.get(key);
 
     if (entry?.error) {
+      this.recordStepEntry(entry.requestHash, entry.error.errorText);
       const errorReason = mapErrorToReason(entry.error.errorText);
       try {
         await this.cdpSession.send("Fetch.failRequest" as any, {
@@ -114,6 +133,7 @@ export class NetworkReplayer {
         // May already be handled
       }
     } else if (entry?.response) {
+      this.recordStepEntry(entry.requestHash, entry.response.bodyHash);
       const responseHeaders = Object.entries(entry.response.headers).map(([name, value]) => ({
         name,
         value,
@@ -134,6 +154,7 @@ export class NetworkReplayer {
         type: "unmatched_request",
         details: `${request.method} ${request.url} (hash: ${hash}, occurrence: ${occurrence})`,
       };
+      this.recordStepEntry(hash, `unmatched:${request.method}:${request.url}:${occurrence}`);
       this.divergences.push(divergence);
       this.options.onDivergence?.(divergence);
 
@@ -154,6 +175,12 @@ export class NetworkReplayer {
     }
 
     this.options.onFetchResolved?.();
+  }
+
+  private recordStepEntry(requestHash: string, terminal: string): void {
+    const stepEntries = this.stepEntries.get(this.stepIndex) ?? [];
+    stepEntries.push({ requestHash, terminal });
+    this.stepEntries.set(this.stepIndex, stepEntries);
   }
 
   private addListener(event: string, handler: (...args: any[]) => void): void {

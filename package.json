@@ -1,7 +1,7 @@
 {
   "name": "@pyyush/dbar",
   "version": "0.2.0",
-  "description": "DBAR — Deterministic Browser Agent Runtime. Replayable, verifiable browser executions.",
+  "description": "Replayable proof for browser agents. Deterministic capture, replay, and verification for Playwright.",
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
@@ -48,11 +48,15 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "performance": "vitest run src/__tests__/performance-budgets.test.ts",
     "test:watch": "vitest",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "package:check": "node scripts/check-npm-pack.mjs",
+    "release:verify": "npm run clean && npm run build && npm run typecheck && npm run test && npm run performance && npm run lint && npm run coverage && npm audit && npm run package:check",
     "clean": "rm -rf dist",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run clean && npm run build && npm run package:check"
   },
   "dependencies": {
     "zod": "^3.23.0"
@@ -66,7 +70,13 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^9.37.0",
     "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@vitest/coverage-v8": "^4.1.1",
+    "eslint": "^9.37.0",
+    "globals": "^16.4.0",
     "playwright-core": "^1.52.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",

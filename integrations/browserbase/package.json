@@ -2,6 +2,7 @@
   "name": "@pyyush/dbar-browserbase",
   "version": "0.2.0",
   "description": "DBAR + Browserbase: deterministic capture in the cloud, replay locally",
+  "private": true,
   "author": "Piyush Vyas",
   "license": "Apache-2.0",
   "type": "module",
@@ -9,20 +10,22 @@
     "capture": "npx tsx capture.ts",
     "replay": "npx tsx replay.ts",
     "example": "npx tsx example.ts",
+    "prepublishOnly": "node -e \"console.error('This integration package is intentionally not publishable.'); process.exit(1)\"",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@pyyush/dbar": "^0.1.0",
-    "@browserbasehq/sdk": "^2.6.0"
+    "@pyyush/dbar": "file:../..",
+    "@browserbasehq/sdk": "2.9.0"
   },
   "peerDependencies": {
     "playwright-core": ">=1.40.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.7.0",
-    "vitest": "^4.0.0"
+    "@types/node": "22.19.15",
+    "playwright-core": "1.58.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.2"
   },
   "engines": {
     "node": ">=20.0.0"
