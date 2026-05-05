@@ -71,16 +71,20 @@ Pushing a `v*` tag starts `.github/workflows/release.yml`.
 
 1. `verify` checks repository hygiene, version alignment, root package gates,
    Python package build and `twine check`, browser-use integration checks, and
-   Browserbase integration checks. It also runs npm and Python package audits.
-   For RC tags, version alignment means npm SemVer and Python PEP 440 are
-   compared after workflow normalization, not by raw tag-string equality.
-2. `npm` publishes `@pyyush/dbar` with npm provenance after `verify` passes. It
-   requires `NPM_TOKEN` and `id-token: write`. RC publishes use npm dist-tag
+   Browserbase integration checks. It also gates `v*` tags to commits reachable
+   from `origin/main`, checks that the target npm/PyPI versions are not already
+   published, and runs npm and Python package audits. For RC tags, version
+   alignment means npm SemVer and Python PEP 440 are compared after workflow
+   normalization, not by raw tag-string equality.
+2. `pypi` publishes the Python package using PyPI trusted publishing after
+   `verify` passes. It does not use a long-lived PyPI token. The first `dbar`
+   publish depends on PyPI accepting the project name and the repository
+   publisher being configured in PyPI.
+3. `npm` publishes `@pyyush/dbar` with npm provenance only after PyPI succeeds.
+   It requires `NPM_TOKEN` and `id-token: write`. RC publishes use npm dist-tag
    `next`; final publishes use `latest`.
-3. `pypi` publishes the Python package using PyPI trusted publishing after npm
-   succeeds. It does not use a long-lived PyPI token. The first `dbar` publish
-   depends on PyPI accepting the project name and the repository publisher
-   being configured in PyPI.
+4. `github_release` creates the GitHub Release only after both PyPI and npm
+   publish jobs succeed.
 
 Do not create the final tag until the release owner confirms PyPI trusted
 publishing/project ownership and external RC validation evidence. Orchestrator
@@ -90,14 +94,16 @@ path during the RC.
 
 ## Repository Settings
 
-The GitHub repository should have, and orchestrator evidence says it now has:
+The GitHub repository should have this required-check set after the PR #8
+workflow update lands. Orchestrator evidence on May 4, 2026 confirmed the same
+settings without the later `python (3.9)` context.
 
 - branch protection on `main`
 - 1 required review, CODEOWNERS review, stale review dismissal, and conversation
   resolution
 - required status contexts: `typescript (20)`, `typescript (22)`,
-  `python (3.10)`, `python (3.11)`, `python (3.12)`, `browser-use`, and
-  `browserbase`
+  `python (3.9)`, `python (3.10)`, `python (3.11)`, `python (3.12)`,
+  `browser-use`, and `browserbase`
 - linear history, no force-push/delete, and enforce-admins
 - Dependabot vulnerability alerts and security updates enabled
 - secret scanning and push protection enabled

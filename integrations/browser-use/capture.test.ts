@@ -7,6 +7,8 @@ import {
   resolvePageForCapture,
   captureStepSnapshot,
   buildManifest,
+  scrubUrlsInText,
+  scrubUrlForLogs,
   type StepRecord,
 } from "./capture.js";
 import * as fs from "node:fs";
@@ -272,10 +274,13 @@ describe("buildManifest", () => {
       },
     ];
 
-    const manifest = buildManifest(steps, "http://127.0.0.1:9333/");
+    const manifest = buildManifest(
+      steps,
+      "http://token-user:secret-pass@127.0.0.1:9333/json/version?token=secret#fragment",
+    );
 
     expect(manifest.version).toBe("1.0.0");
-    expect(manifest.cdpUrl).toBe("http://127.0.0.1:9333/");
+    expect(manifest.cdpUrl).toBe("http://127.0.0.1:9333/json/version");
     expect(manifest.steps).toHaveLength(2);
     expect(manifest.steps[0]!.label).toBe("step-1");
     expect(manifest.steps[1]!.domHash).toBe("ddd");
@@ -290,5 +295,27 @@ describe("buildManifest", () => {
     expect(manifest.limitations).toContain("no-network-recording");
     expect(manifest.limitations).toContain("no-virtual-time");
     expect(manifest.limitations).toContain("no-deterministic-replay");
+  });
+});
+
+describe("scrubUrlForLogs", () => {
+  it("shouldStripCredentialsQueryParamsAndFragments", () => {
+    expect(
+      scrubUrlForLogs("ws://user:pass@127.0.0.1:9222/devtools/browser/id?token=secret#debug"),
+    ).toBe("ws://127.0.0.1:9222/devtools/browser/id");
+  });
+
+  it("shouldReturnAPlaceholderForMalformedUrls", () => {
+    expect(scrubUrlForLogs("http://[not-a-url")).toBe("[redacted-url]");
+  });
+});
+
+describe("scrubUrlsInText", () => {
+  it("shouldScrubUrlsEmbeddedInErrorMessages", () => {
+    const message = "connect ECONNREFUSED ws://user:pass@127.0.0.1:9222/devtools/browser/id?token=secret";
+
+    expect(scrubUrlsInText(message)).toBe(
+      "connect ECONNREFUSED ws://127.0.0.1:9222/devtools/browser/id",
+    );
   });
 });

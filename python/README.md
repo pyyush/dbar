@@ -45,7 +45,8 @@ Until that external verification passes, install from a local checkout.
 ## Version Compatibility
 
 - `dbar 1.0.0` local package metadata
-- Python 3.9+ for the DBAR recorder and capsule diff package
+- Python 3.9+ for the DBAR recorder and capsule diff package; CI verifies
+  3.9, 3.10, 3.11, and 3.12
 - No `dbar[browser-use]` extra is shipped in `1.0.0`; install and audit
   `browser-use` in your application environment separately
 

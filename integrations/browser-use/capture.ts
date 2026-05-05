@@ -38,6 +38,7 @@ export interface StepRecord {
 /** Manifest written at the end of a capture session. */
 export interface CaptureManifest {
   version: string;
+  /** CDP endpoint scrubbed for persisted artifacts: credentials, query, and fragment omitted. */
   cdpUrl: string;
   captureMode: string;
   limitations: string[];
@@ -175,6 +176,36 @@ function canonicalize(value: unknown): string {
   });
 }
 
+/**
+ * Produce a URL string safe for logs and persisted manifests.
+ *
+ * CDP endpoints often carry bearer tokens in query strings or credentials in
+ * the authority component. The raw endpoint must only be used in-memory for the
+ * CDP connection itself.
+ */
+export function scrubUrlForLogs(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "[redacted-url]";
+  }
+}
+
+/** Scrub URL credentials and query strings from arbitrary log text. */
+export function scrubUrlsInText(text: string): string {
+  return text.replace(/\b(?:https?|wss?):\/\/[^\s"'<>]+/g, (rawUrl) => scrubUrlForLogs(rawUrl));
+}
+
+function formatErrorForLogs(error: unknown): string {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  return scrubUrlsInText(message);
+}
+
 type CDPSessionLike = {
   send: (...args: any[]) => Promise<any>;
   detach: () => Promise<void>;
@@ -304,7 +335,7 @@ export async function captureStepSnapshot(
 export function buildManifest(steps: StepRecord[], cdpUrl: string): CaptureManifest {
   return {
     version: "1.0.0",
-    cdpUrl,
+    cdpUrl: scrubUrlForLogs(cdpUrl),
     captureMode: "snapshot-only",
     limitations: [
       "no-network-recording",
@@ -351,7 +382,7 @@ const isMainModule = process.argv[1]?.endsWith("capture.ts") ||
 
 if (isMainModule) {
   main().catch((error: unknown) => {
-    console.error("[dbar-capture] Fatal error:", error);
+    console.error("[dbar-capture] Fatal error:", formatErrorForLogs(error));
     process.exit(1);
   });
 }
@@ -361,7 +392,7 @@ async function main(): Promise<void> {
 
   const { cdpUrl, outputDir } = parseArgs();
 
-  console.log(`[dbar-capture] Connecting to browser at ${cdpUrl}`);
+  console.log(`[dbar-capture] Connecting to browser at ${scrubUrlForLogs(cdpUrl)}`);
 
   const browser = await chromium.connectOverCDP(cdpUrl);
   const contexts = browser.contexts();
@@ -396,10 +427,10 @@ async function main(): Promise<void> {
 
         if (signal.targetId && !resolved.matchedTargetId) {
           console.warn(
-            `[dbar-capture] Target ${signal.targetId} not found, falling back to page ${resolved.page.url()}`,
+            `[dbar-capture] Target ${signal.targetId} not found, falling back to page ${scrubUrlForLogs(resolved.page.url())}`,
           );
         } else {
-          console.log(`[dbar-capture] Capturing page: ${resolved.page.url()}`);
+          console.log(`[dbar-capture] Capturing page: ${scrubUrlForLogs(resolved.page.url())}`);
         }
 
         await cdpSession.send("DOMSnapshot.enable" as any);
@@ -440,8 +471,9 @@ async function main(): Promise<void> {
 
         console.log(`[dbar-capture] Step ${stepCount} captured`);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error(`[dbar-capture] Failed to capture step ${stepCount}: ${message}`);
+        console.error(
+          `[dbar-capture] Failed to capture step ${stepCount}: ${formatErrorForLogs(err)}`,
+        );
       } finally {
         if (cdpSession) {
           await cdpSession.detach().catch(() => {});

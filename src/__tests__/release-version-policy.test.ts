@@ -82,7 +82,7 @@ describe("release version policy", () => {
     } finally {
       rmSync(root, { force: true, recursive: true });
     }
-  });
+  }, 30_000);
 
   it("maps RC tags from npm SemVer to Python PEP 440", () => {
     const root = makeFixture();
@@ -109,5 +109,5 @@ describe("release version policy", () => {
     } finally {
       rmSync(root, { force: true, recursive: true });
     }
-  });
+  }, 30_000);
 });

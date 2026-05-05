@@ -67,7 +67,7 @@ Optional interim release: `0.3.0`.
 Baseline to keep unless the orchestrator approves a change:
 
 - Root Node tooling: Node `20` and `22`.
-- Python CI: Python `3.10`, `3.11`, and `3.12`.
+- Python CI: Python `3.9`, `3.10`, `3.11`, and `3.12`.
 - Root commands: `npm ci`, `npm run build`, `npm run typecheck`, `npm test`, `npm run lint`.
 - Python commands: `python -m pip install -e ".[dev]"`, `python -m pytest tests/ -q`.
 - Browser-use integration: `npm ci`, `npm run typecheck`, `npm test`.
@@ -654,7 +654,7 @@ Cycle estimate model:
 
 - [x] Decide whether the dirty local CI workflow is the intended 1.0.0 baseline.
 - [x] Ensure local GitHub CI includes Node 20/22 root jobs.
-- [x] Ensure local GitHub CI includes Python 3.10/3.11/3.12 jobs.
+- [x] Ensure local GitHub CI includes Python 3.9/3.10/3.11/3.12 jobs.
 - [x] Ensure local GitHub CI includes browser-use and Browserbase unit integration jobs.
 - [x] Keep lint and coverage after Tasks 4 and 5 are stable.
 - [x] Do not add Firefox/WebKit or browser-harness matrix jobs without orchestrator approval.
@@ -670,7 +670,7 @@ Cycle estimate model:
 
 - Local `CI` workflow jobs: `typescript`, `python`, `browser-use`, and `browserbase`.
 - Root TypeScript job matrix: Node 20 and 22; steps are `npm ci`, `npm run build`, `npm run typecheck`, `npm test`, `npm run lint`, and `npm run coverage`.
-- Python job matrix: Python 3.10, 3.11, and 3.12; steps are editable install with dev dependencies and `python -m pytest tests/ -q`.
+- Python job matrix: Python 3.9, 3.10, 3.11, and 3.12; steps are editable install with dev dependencies and `python -m pytest tests/ -q`.
 - Browser-use job: Node 22, integration package `npm ci`, `npm run typecheck`, and `npm test`.
 - Browserbase job: Node 22, integration package `npm ci`, and `npm test`; no live Browserbase credential gate is required.
 - Unapproved matrices: no Firefox/WebKit jobs, no browser-harness CI, and no cross-browser Playwright matrix.
@@ -907,7 +907,7 @@ Cycle estimate model:
 
 **Steps:**
 
-- [x] Run Python tests under 3.10, 3.11, and 3.12 in CI.
+- [x] Run Python tests under 3.9, 3.10, 3.11, and 3.12 in CI.
 - [x] Rerun Python package audit, including browser-use optional requirements.
 - [x] Fix the `pip-audit` temp venv/ensurepip blocker or use an approved alternate audit path.
 - [x] Keep browser-use docs observe-only and no deterministic replay.
@@ -921,7 +921,7 @@ Cycle estimate model:
 
 **Task 11 implementation results:**
 
-- Task 6 already aligned local GitHub Actions to run the Python lane in CI on Python 3.10, 3.11, and 3.12. This task added fresh local evidence on the current workstation interpreter (`Python 3.9.6`) without changing the approved CI/runtime matrix.
+- Task 6 originally aligned local GitHub Actions to run the Python lane in CI on Python 3.10, 3.11, and 3.12. PR #8 blocker resolution later added Python 3.9 to the CI and release verification matrix so the `>=3.9` support claim is continuously tested.
 - `integrations/browserbase/__tests__/live-smoke.test.ts` already used a safe credential gate:
   `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID` must both be present or the live smoke test is registered with `it.skip`.
 - Local environment verification confirmed no Browserbase credentials were present, and `npm --prefix integrations/browserbase test` reported `1 skipped` test. This proves the live smoke path stays non-blocking without secrets while remaining runnable when credentials are supplied.
@@ -1266,13 +1266,22 @@ untracked release files. A scoped docs commit would include earlier work.
 - [x] Browser-harness remains optional interop only; no dependency, backend, release gate, or CI matrix was added.
 - [x] RC version alignment is resolved before tag creation. Checked-in metadata stays at final stable `1.0.0`; `scripts/prepare-release-version.mjs` rewrites CI checkouts for RC tags, maps npm SemVer to Python PEP 440, uses npm dist-tag `next` for RCs, uses `latest` for finals, and marks GitHub RC releases as prereleases.
 - [x] Remote GitHub settings confirmed by orchestrator on May 4, 2026: `main` requires 1 review, CODEOWNERS review, stale review dismissal, conversation resolution, linear history, no force-push/delete, enforce-admins, and required status contexts `typescript (20)`, `typescript (22)`, `python (3.10)`, `python (3.11)`, `python (3.12)`, `browser-use`, and `browserbase`.
+- [x] PR #8 updates the intended required status context set to include
+  `python (3.9)` alongside the existing Python contexts once the workflow
+  lands and branch protection is refreshed.
 - [x] Repository security settings confirmed by orchestrator on May 4, 2026: Dependabot vulnerability alerts/security updates, secret scanning, push protection, and private vulnerability reporting are enabled.
 - [x] npm identity confirmed by orchestrator evidence: `npm whoami` reports `pyyush`.
+- [x] PR #8 blocker update: release automation now gates `v*` tags to commits
+  reachable from `origin/main`, preflights npm/PyPI version availability,
+  publishes PyPI before npm, creates the GitHub Release last, verifies Python
+  3.9 in CI/release, keeps raw CDP endpoints out of browser-use manifests and
+  logs, and leaves the performance budget enforced by `npm run performance`
+  instead of the default unit-test command.
 
 **Required evidence before RC:**
 
 - [ ] Root Node 20 and 22 CI pass.
-- [ ] Python 3.10, 3.11, and 3.12 CI pass.
+- [ ] Python 3.9, 3.10, 3.11, and 3.12 CI pass.
 - [ ] Browser-use integration CI passes.
 - [ ] Browserbase integration CI passes.
 - [ ] Coverage report exists and meets accepted threshold.
