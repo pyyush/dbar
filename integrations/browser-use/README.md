@@ -79,7 +79,9 @@ await agent.run(on_step_end=...)
 The integration should not pass `on_step_end` into `Agent(...)`.
 
 The browser session should be started before the sidecar is launched so you can
-hand DBAR the real `browser.cdp_url` chosen by browser-use:
+hand DBAR the real `browser.cdp_url` chosen by browser-use. Keep that endpoint
+in memory; CDP URLs may contain credentials or bearer tokens and should not be
+printed, logged, or persisted raw.
 
 ```python
 browser = Browser(headless=False)
@@ -166,18 +168,20 @@ python example.py
 
 ### Run capture sidecar manually
 
-In your Python process:
+In your Python process, pass the CDP URL directly to the sidecar environment
+without printing it:
 
 ```python
+import os
+import subprocess
+
 browser = Browser(headless=False)
 await browser.start()
-print(browser.cdp_url)
-```
 
-Then start the capture sidecar with that CDP URL:
-
-```bash
-npx tsx capture.ts "$BROWSER_USE_CDP_URL" ./dbar-snapshots
+subprocess.Popen(
+    ["npx", "tsx", "capture.ts", "./dbar-snapshots"],
+    env={**os.environ, "BROWSER_USE_CDP_URL": browser.cdp_url},
+)
 ```
 
 Signal DBAR at step boundaries:
