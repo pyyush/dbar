@@ -17,8 +17,10 @@ class StepSnapshot:
 
     Attributes:
         index: Zero-based step number.
-        dom_hash: SHA-256 hash of the DOM state after this step, or None if DOM capture is disabled.
-        screenshot_hash: SHA-256 hash of the screenshot after this step, or None if screenshots are disabled.
+        dom_hash: SHA-256 hash of the best available page-state representation
+            after this step, or None if DOM capture is disabled.
+        screenshot_hash: SHA-256 hash of the screenshot after this step,
+            or None if screenshots are disabled.
         action: The browser-use action taken at this step, or None.
         thinking: The model's thinking/reasoning at this step, or None.
         url: The page URL at this step, or None.

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createHash } from "node:crypto";
 import { NetworkReplayer } from "../network/replayer.js";
 import { hashRequest } from "../network/types.js";
 import type { NetworkTranscript, Divergence } from "../capsule/types.js";
@@ -268,6 +269,45 @@ describe("NetworkReplayer", () => {
     expect(fulfills).toHaveLength(2);
     expect(fulfills[0]!.params.body).toBe(Buffer.from("first").toString("base64"));
     expect(fulfills[1]!.params.body).toBe(Buffer.from("second").toString("base64"));
+
+    await replayer.stop();
+  });
+
+  it("shouldComputeStepNetworkDigestFromObservedTraffic", async () => {
+    const bodyHash = "abc123";
+    const transcript = buildTranscript([
+      {
+        method: "GET",
+        url: "https://example.com/api",
+        response: {
+          status: 200,
+          headers: {},
+          body: Buffer.from("ok").toString("base64"),
+          bodyHash,
+        },
+      },
+    ]);
+    const replayer = new NetworkReplayer(mock.session, transcript, {
+      unmatchedRequestPolicy: "block",
+    });
+    await replayer.start();
+
+    mock.emit("Fetch.requestPaused", {
+      requestId: "live-6",
+      request: { method: "GET", url: "https://example.com/api", headers: {} },
+    });
+
+    await vi.waitFor(() => {
+      expect(mock.sentCommands.some((c) => c.method === "Fetch.fulfillRequest")).toBe(true);
+    });
+
+    const expectedDigest = createHash("sha256")
+      .update(hashRequest({ method: "GET", url: "https://example.com/api", headers: {} }))
+      .update(bodyHash)
+      .digest("hex");
+
+    expect(replayer.getStepNetworkDigest(0)).toBe(expectedDigest);
+    expect(replayer.getDivergencesForStep(0)).toEqual([]);
 
     await replayer.stop();
   });

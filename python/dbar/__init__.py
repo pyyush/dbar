@@ -1,7 +1,7 @@
-"""DBAR — Deterministic Browser Agent Runtime (Python SDK).
+"""DBAR — replayable browser execution evidence for Python.
 
 Provides recording and comparison of browser-use agent executions
-via determinism capsules.
+via evidence capsules.
 
 Exports:
     DBARRecorder: Records browser-use agent steps into a capsule.

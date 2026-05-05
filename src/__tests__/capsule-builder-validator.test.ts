@@ -76,9 +76,14 @@ function makeArtifacts(count: number): CapsuleBuildInput["artifacts"] {
 
 function makeMinimalInput(): CapsuleBuildInput {
   return {
-    environment: validEnvironment,
+    environment: { ...validEnvironment, viewport: { ...validEnvironment.viewport } },
     seeds: validSeeds,
-    initialState: validInitialState,
+    initialState: {
+      ...validInitialState,
+      cookies: [...validInitialState.cookies],
+      localStorage: [...validInitialState.localStorage],
+      unsupportedState: [...validInitialState.unsupportedState],
+    },
     networkTranscript: { orderingPolicy: "recorded", entries: [] },
     steps: makeSteps(1),
     artifacts: makeArtifacts(1),
@@ -467,6 +472,112 @@ describe("validateCapsule", () => {
 
     // Then there is a warning about unsupportedState
     expect(result.warnings.some((w) => w.path === "initialState.unsupportedState")).toBe(true);
+  });
+
+  it("shouldWarnAboutFullFidelitySensitiveCapsuleContentsWithoutInvalidatingReplay", () => {
+    // Given a valid full-fidelity capsule that contains likely sensitive fields
+    const body = Buffer.from("email=piyush@example.com");
+    const bodyHash = createHash("sha256").update(body).digest("hex");
+    const input = makeMinimalInput();
+    input.initialState = {
+      url: "https://example.com/account?token=secret",
+      cookies: [
+        {
+          name: "sid",
+          value: "cookie-secret",
+          domain: ".example.com",
+          path: "/",
+          expires: 1800000000,
+          httpOnly: true,
+          secure: true,
+          sameSite: "Lax",
+        },
+      ],
+      localStorage: [
+        {
+          origin: "https://example.com",
+          entries: [{ name: "authToken", value: "local-storage-secret" }],
+        },
+      ],
+      unsupportedState: ["sessionStorage", "indexedDB", "serviceWorkers"],
+    };
+    input.networkTranscript = {
+      orderingPolicy: "recorded",
+      entries: [
+        {
+          index: 0,
+          requestId: "req-1",
+          url: "https://example.com/api/user?token=secret",
+          method: "GET",
+          headers: { Authorization: "[REDACTED]" },
+          requestHash: "h1",
+          occurrenceIndex: 0,
+          timestamp: 0,
+          response: {
+            status: 200,
+            headers: { "Set-Cookie": "[REDACTED]" },
+            body: body.toString("base64"),
+            bodyHash,
+          },
+        },
+      ],
+    };
+    const archive = buildCapsule(input);
+
+    // When validated
+    const result = validateCapsule(archive);
+    const warningPaths = result.warnings.map((w) => w.path);
+
+    // Then privacy warnings are advisory and replay remains valid
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+    expect(warningPaths).toContain("initialState.cookies");
+    expect(warningPaths).toContain("initialState.localStorage");
+    expect(warningPaths).toContain("initialState.url");
+    expect(warningPaths).toContain("networkTranscript.entries[0].url");
+    expect(warningPaths).toContain("networkTranscript.entries[0].headers.Authorization");
+    expect(warningPaths).toContain("networkTranscript.entries[0].response.headers.Set-Cookie");
+    expect(warningPaths).toContain("networkTranscript.entries[0].response.body");
+    expect(warningPaths).toContain("steps[0].artifacts.screenshot");
+  });
+
+  it("shouldMakeResponseBodyReplayFidelityTradeoffExplicit", () => {
+    // Given a capsule with a retained response body
+    const body = Buffer.from("full response body");
+    const bodyHash = createHash("sha256").update(body).digest("hex");
+    const input = makeMinimalInput();
+    input.networkTranscript = {
+      orderingPolicy: "recorded",
+      entries: [
+        {
+          index: 0,
+          requestId: "req-1",
+          url: "https://example.com/api",
+          method: "GET",
+          headers: {},
+          requestHash: "h1",
+          occurrenceIndex: 0,
+          timestamp: 0,
+          response: {
+            status: 200,
+            headers: {},
+            body: body.toString("base64"),
+            bodyHash,
+          },
+        },
+      ],
+    };
+    const archive = buildCapsule(input);
+
+    // When validated
+    const result = validateCapsule(archive);
+    const bodyWarning = result.warnings.find(
+      (warning) => warning.path === "networkTranscript.entries[0].response.body"
+    );
+
+    // Then the warning says bodies are retained for replay fidelity and unsafe to share
+    expect(bodyWarning?.message).toContain("retained for full-fidelity replay");
+    expect(bodyWarning?.message).toContain("unsafe to share");
   });
 
   it("shouldAcceptValidBodyHashWhenItMatchesStoredContent", () => {

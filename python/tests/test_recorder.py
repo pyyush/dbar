@@ -6,15 +6,16 @@ internal implementation details.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import pytest
 
 from dbar.recorder import DBARRecorder
-from dbar.types import StepSnapshot
-from tests.conftest import make_mock_agent
+from tests.conftest import MockAgent, append_mock_step, make_mock_agent
 
 
 class TestStepCapture:
@@ -30,31 +31,57 @@ class TestStepCapture:
 
     @pytest.mark.asyncio
     async def test_should_increment_index_when_multiple_steps_captured(self, tmp_output_dir):
-        """Given an agent with multiple steps, when on_step_end is called for each, then indices increment."""
-        agent = make_mock_agent(num_steps=3)
+        """Given history grows one step at a time, when captured, then indices increment."""
+        agent = MockAgent()
         recorder = DBARRecorder(output_dir=tmp_output_dir)
-        for _ in range(3):
+
+        for step_number in range(3):
+            append_mock_step(agent, url=f"https://example.com/{step_number}")
             await recorder.on_step_end(agent)
-        assert [s.index for s in recorder._snapshots] == [0, 1, 2]
+
+        assert [snapshot.index for snapshot in recorder._snapshots] == [0, 1, 2]
+        assert recorder._snapshots[-1].url == "https://example.com/2"
 
     @pytest.mark.asyncio
-    async def test_should_hash_dom_with_sha256_when_dom_present(self, mock_agent, tmp_output_dir):
-        """Given DOM content, when captured, then dom_hash is the SHA-256 hex digest."""
+    async def test_should_hash_live_dom_representation_with_sha256_when_present(self, mock_agent, tmp_output_dir):
+        """Given live browser state, when captured, then dom_hash hashes the live DOM representation."""
         recorder = DBARRecorder(output_dir=tmp_output_dir)
         await recorder.on_step_end(mock_agent)
-        dom_text = mock_agent.history.history[-1].state.element_tree.to_string()
+
+        dom_text = mock_agent.browser_session.live_state.dom_state.eval_representation()
         expected_hash = hashlib.sha256(dom_text.encode("utf-8")).hexdigest()
         assert recorder._snapshots[0].dom_hash == expected_hash
 
     @pytest.mark.asyncio
-    async def test_should_hash_screenshot_when_screenshot_present(
+    async def test_should_hash_screenshot_bytes_when_screenshot_present(
         self, mock_agent_with_screenshot, tmp_output_dir
     ):
-        """Given a screenshot, when captured, then screenshot_hash is the SHA-256 hex digest."""
+        """Given a screenshot, when captured, then screenshot_hash hashes the decoded screenshot bytes."""
         recorder = DBARRecorder(output_dir=tmp_output_dir, include_screenshots=True)
         await recorder.on_step_end(mock_agent_with_screenshot)
-        screenshot_data = mock_agent_with_screenshot.history.history[-1].state.screenshot
-        expected_hash = hashlib.sha256(screenshot_data.encode("utf-8")).hexdigest()
+
+        screenshot_data = mock_agent_with_screenshot.browser_session.live_state.screenshot
+        expected_hash = hashlib.sha256(base64.b64decode(screenshot_data)).hexdigest()
+        assert recorder._snapshots[0].screenshot_hash == expected_hash
+
+    @pytest.mark.asyncio
+    async def test_should_fallback_to_screenshot_path_when_live_screenshot_missing(self, tmp_output_dir, tmp_path):
+        """Given only a history screenshot path, when captured, then screenshot_hash is still recorded."""
+        screenshot_path = tmp_path / "step.png"
+        screenshot_bytes = b"fake-png"
+        screenshot_path.write_bytes(screenshot_bytes)
+
+        agent = MockAgent()
+        append_mock_step(
+            agent,
+            screenshot_path=str(screenshot_path),
+            live_screenshot=None,
+        )
+        recorder = DBARRecorder(output_dir=tmp_output_dir, include_screenshots=True)
+
+        await recorder.on_step_end(agent)
+
+        expected_hash = hashlib.sha256(screenshot_bytes).hexdigest()
         assert recorder._snapshots[0].screenshot_hash == expected_hash
 
     @pytest.mark.asyncio
@@ -71,7 +98,7 @@ class TestStepCapture:
         """Given an action in the step, when captured, then action is recorded."""
         recorder = DBARRecorder(output_dir=tmp_output_dir, include_actions=True)
         await recorder.on_step_end(mock_agent)
-        assert recorder._snapshots[0].action is not None
+        assert recorder._snapshots[0].action == '[{"click":{"text":"click button"}}]'
 
     @pytest.mark.asyncio
     async def test_should_skip_action_when_actions_disabled(self, mock_agent, tmp_output_dir):
@@ -110,6 +137,14 @@ class TestStepCapture:
         await recorder.on_step_end(agent)
         assert recorder._snapshots[0].thinking is None
 
+    @pytest.mark.asyncio
+    async def test_should_ignore_repeated_hook_calls_for_same_history_length(self, mock_agent, tmp_output_dir):
+        """Given the same history step twice, when the hook repeats, then no duplicate snapshot is added."""
+        recorder = DBARRecorder(output_dir=tmp_output_dir)
+        await recorder.on_step_end(mock_agent)
+        await recorder.on_step_end(mock_agent)
+        assert len(recorder._snapshots) == 1
+
 
 class TestRedaction:
     """Verify sensitive data redaction."""
@@ -137,7 +172,7 @@ class TestMissingData:
 
     @pytest.mark.asyncio
     async def test_should_handle_no_screenshot_in_state(self, mock_agent, tmp_output_dir):
-        """Given no screenshot in state, when captured, then screenshot_hash is None."""
+        """Given no screenshot anywhere, when captured, then screenshot_hash is None."""
         recorder = DBARRecorder(output_dir=tmp_output_dir, include_screenshots=True)
         await recorder.on_step_end(mock_agent)
         assert recorder._snapshots[0].screenshot_hash is None
@@ -154,14 +189,13 @@ class TestFinish:
         capsule = recorder.finish()
         capsule_path = os.path.join(tmp_output_dir, "capsule.json")
         assert os.path.exists(capsule_path)
-        with open(capsule_path) as f:
+        with open(capsule_path, encoding="utf-8") as f:
             data = json.load(f)
         assert data["step_count"] == 1
+        assert capsule.step_count == 1
 
     @pytest.mark.asyncio
-    async def test_should_return_capsule_object_when_finish_called(
-        self, mock_agent, tmp_output_dir
-    ):
+    async def test_should_return_capsule_object_when_finish_called(self, mock_agent, tmp_output_dir):
         """Given recorded steps, when finish is called, then a Capsule object is returned."""
         recorder = DBARRecorder(output_dir=tmp_output_dir)
         await recorder.on_step_end(mock_agent)

@@ -79,8 +79,7 @@ function assertSafeUrl(url: string, validateUrl?: (url: string) => void): void {
  * localStorage entries, and finally navigates to the initial URL.
  *
  * All URLs are validated before navigation to prevent SSRF attacks from
- * malicious capsule archives (see BAP CLAUDE.md: "storage/setState must
- * validate URLs before navigation").
+ * malicious capsule archives.
  *
  * @param page - Playwright Page instance
  * @param state - Previously captured InitialState to restore

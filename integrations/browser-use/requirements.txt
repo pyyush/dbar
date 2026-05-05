@@ -1,2 +1,7 @@
-browser-use==0.12.5
-langchain-openai==0.1.25
+# Intentionally empty for DBAR 1.0.0.
+#
+# As of May 4, 2026, browser-use 0.12.5 and the latest browser-use 0.12.6
+# exact-pin vulnerable transitive dependencies. DBAR therefore does not ship
+# browser-use as an optional Python extra or as an active integration
+# requirements file. Install browser-use and your LLM provider in your
+# application environment only after your own dependency audit passes.

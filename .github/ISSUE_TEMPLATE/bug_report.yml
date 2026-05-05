@@ -1,0 +1,45 @@
+name: Bug report
+description: Report incorrect capture, replay, validation, or package behavior.
+title: "[bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the smallest workflow, capsule, or command sequence that reproduces the issue. Do not attach sensitive capsules publicly.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DBAR version
+      placeholder: "@pyyush/dbar 1.0.0-rc.0 or dbar 1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      options:
+        - Root TypeScript package
+        - Python browser-use package
+        - Browserbase integration
+        - Release/package automation
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Node/Python versions, OS, browser/channel, and CI provider when relevant.
+    validations:
+      required: true

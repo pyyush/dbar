@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a narrowly scoped improvement to replayable browser proof.
+title: "[feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Explain the failed-run to replay to regression-artifact problem this solves.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest API, CLI, capsule, docs, or integration change that would solve it.
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      options:
+        - Root TypeScript package
+        - Python browser-use package
+        - Browserbase integration
+        - Release/package automation
+        - Documentation
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This keeps DBAR focused on replayable proof, first divergence, or reusable regression artifacts.
+          required: true
+        - label: This does not require browser-harness as a dependency, backend, release gate, or CI matrix entry.
+          required: true

@@ -4,6 +4,12 @@ dist/
 *.tsbuildinfo
 .DS_Store
 *.tgz
+coverage/
+htmlcov/
+.pytest_cache/
+__pycache__/
+python/build/
+python/*.egg-info/
 .omx/
 .pilot/
 .dev-session/

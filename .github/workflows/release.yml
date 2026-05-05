@@ -1,25 +1,130 @@
 name: Release
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Fetch default branch
+        run: git fetch --force origin main:refs/remotes/origin/main
+      - name: Check release tag ancestry
+        run: node scripts/check-release-tag.mjs --tag "$GITHUB_REF_NAME" --default-branch origin/main
       - name: Check repository hygiene
+        run: |
+          TRACKED_IGNORED="$(git ls-files -ci --exclude-standard || true)"
+          if [ -n "$TRACKED_IGNORED" ]; then
+            echo "Tracked files are ignored by .gitignore and must be removed from the public release tree:"
+            echo "$TRACKED_IGNORED"
+            exit 1
+          fi
+
+          INTERNAL_FILES="$(git ls-files | grep -E '^(docs/plans|\.omx|\.pilot|\.dev-session)(/|$)|(^|/)(AGENTS\.md|CLAUDE\.md|POSITIONING\.md|ROADMAP\.md|BROWSER_USE_PR\.md|demo/RECORD-DEMO-PROMPT\.md|\.staff-engineer-state\.json|\.staff-engineer\.json)$' || true)"
+          if [ -n "$INTERNAL_FILES" ]; then
+            echo "Tracked internal-only files found in public release tree."
+            echo "$INTERNAL_FILES"
+            exit 1
+          fi
+
+          BANNER_DRAFTS="$(git ls-files .github/banners | grep -Ev '^\.github/banners/05-replay-arrows\.svg$' || true)"
+          if [ -n "$BANNER_DRAFTS" ]; then
+            echo "Tracked banner drafts found outside the release banner."
+            echo "$BANNER_DRAFTS"
+            exit 1
+          fi
+      - name: Prepare release versions
+        id: release_version
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
+      - name: Check registry release availability
+        run: |
+          node scripts/check-release-registries.mjs \
+            --npm-package "@pyyush/dbar" \
+            --npm-version "${{ steps.release_version.outputs.npm_version }}" \
+            --pypi-package "dbar" \
+            --python-version "${{ steps.release_version.outputs.python_version }}"
+      - run: npm ci
+      - name: Check tag and package versions
+        run: |
+          NPM_VERSION="$(node -p "require('./package.json').version")"
+          PY_VERSION="$(python3 -c "import pathlib, re; text = pathlib.Path('python/pyproject.toml').read_text(encoding='utf-8'); match = re.search(r'^version = \\\"([^\\\"]+)\\\"$', text, re.M); print(match.group(1))")"
+          PY_RUNTIME_VERSION="$(PYTHONPATH=python python3 -c "import dbar; print(dbar.__version__)")"
+          test "${{ steps.release_version.outputs.npm_version }}" = "$NPM_VERSION"
+          test "${{ steps.release_version.outputs.python_version }}" = "$PY_VERSION"
+          test "${{ steps.release_version.outputs.python_version }}" = "$PY_RUNTIME_VERSION"
+      - run: npm run release:verify
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Verify python package on lowest supported Python
+        working-directory: python
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest tests/ -q
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify python package
+        working-directory: python
+        run: |
+          python -m pip install -e ".[dev]" build twine pip-audit
+          python -m pytest tests/ -q
+          rm -rf dist build *.egg-info
+          python -m build
+          python -m twine check dist/*
+          rm -rf /tmp/dbar-python-audit
+          python -m pip install --no-deps --target /tmp/dbar-python-audit dist/*.whl
+          python -m pip_audit --path /tmp/dbar-python-audit --progress-spinner off
+      - name: Confirm browser-use is not a shipped Python extra
+        working-directory: python
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tomllib
+
+          metadata = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          extras = metadata.get("project", {}).get("optional-dependencies", {})
+          if "browser-use" in extras:
+              raise SystemExit("The release must not ship dbar[browser-use] until upstream browser-use pins audit clean.")
+          PY
+      - name: Verify browser-use integration
+        working-directory: integrations/browser-use
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm audit
+      - name: Verify browserbase integration
+        working-directory: integrations/browserbase
+        run: |
+          npm ci
+          npm test
+          npm audit
+
+  pypi:
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository hygiene
+        working-directory: .
         run: |
           if git ls-files | grep -E '^(docs/plans|\.omx|\.pilot|\.dev-session)(/|$)|(^|/)(AGENTS\.md|CLAUDE\.md|POSITIONING\.md|ROADMAP\.md|BROWSER_USE_PR\.md|demo/RECORD-DEMO-PROMPT\.md|\.staff-engineer-state\.json|\.staff-engineer\.json)$'; then
             echo "Tracked internal-only files found in public release tree."
@@ -34,61 +139,79 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          registry-url: https://registry.npmjs.org
+      - name: Prepare release versions
+        working-directory: .
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: npm ci
-      - run: npm run release:verify
-      - name: Verify python package
+      - run: pip install hatchling build
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest tests/ -q
+      - run: rm -rf dist build *.egg-info
+      - run: python -m build
+      - name: Check current PyPI project state
         run: |
-          python -m pip install -e "./python[dev]" build twine
-          python -m pytest python/tests -q
-          (
-            cd python
-            python -m build
-            python -m twine check dist/*
-          )
-      - name: Verify browser-use integration
-        working-directory: integrations/browser-use
-        run: |
-          npm ci
-          npm run typecheck
-          npm test
-      - name: Verify browserbase integration
-        working-directory: integrations/browserbase
-        run: |
-          npm ci
-          npm test
-      - name: Create release PR or publish npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: npm run release:version
-          publish: npm run release:publish:npm
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
 
-  pypi:
+          url = "https://pypi.org/pypi/dbar/json"
+          try:
+              with urllib.request.urlopen(url, timeout=20) as response:
+                  data = json.load(response)
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print("PyPI project 'dbar' is not published yet; this release will create it only if PyPI trusted publishing is configured for this repository.")
+              else:
+                  raise
+          else:
+              print(f"PyPI project 'dbar' already exists with latest version {data['info'].get('version')}; publish will proceed only if this repository is authorized for that project.")
+          PY
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist/
+
+  npm:
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.outputs.published == 'true'
+    needs: pypi
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Prepare release versions
+        id: release_version
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm run clean
+      - run: npm run build
+      - run: npm run package:check
+      - run: npm publish --access public --provenance --tag "${{ steps.release_version.outputs.npm_dist_tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github_release:
+    runs-on: ubuntu-latest
+    needs: npm
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-      - run: python -m pip install -e "./python[dev]" build
-      - run: python -m pytest python/tests -q
-      - run: python -m build
-        working-directory: python
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          node-version: 22
+      - name: Prepare release versions
+        id: release_version
+        run: node scripts/prepare-release-version.mjs --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          packages-dir: python/dist/
+          generate_release_notes: true
+          prerelease: ${{ steps.release_version.outputs.github_prerelease }}

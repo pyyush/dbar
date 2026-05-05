@@ -10,15 +10,19 @@ Compared with the Browserbase integration, this lane is intentionally
 observe-only: it gives you snapshots, diffs, and an audit trail, not full
 deterministic network/time replay.
 
-This integration is verified against these exact versions:
+This integration's Node sidecar is verified against these exact package
+versions:
 
-- Python 3.11+
-- `browser-use==0.12.5`
-- `langchain-openai==0.1.25` for `example.py`
 - `playwright-core==1.58.2`
 - `ts-node==10.9.2`
 - `typescript==5.9.3`
 - `vitest==4.1.2`
+
+Python `browser-use` itself is not shipped by DBAR 1.0.0. As of May 4, 2026,
+PyPI's latest `browser-use` is `0.12.6`; both `0.12.5` and `0.12.6` exact-pin
+transitive dependencies that fail `pip-audit`. Use this integration only in an
+application environment where your chosen `browser-use` dependency set audits
+clean.
 
 ## What This Does
 
@@ -34,12 +38,37 @@ Each artifact is hashed with SHA-256 for integrity verification.
 - Does not record network traffic
 - Does not freeze time
 - Does not produce a replayable determinism capsule
+- Does not support deterministic replay on Firefox or WebKit
 
-This sidecar intentionally stays out of browser-use's control loop. For full
-deterministic capture and replay, use DBAR directly with Playwright or the
-[Browserbase integration](../browserbase/README.md).
+This sidecar intentionally stays out of browser-use's control loop. For
+deterministic capture and replay within DBAR's supported Chromium/CDP
+boundaries, use DBAR directly with Playwright or the [Browserbase
+integration](../browserbase/README.md).
 
-## Integration Contract With browser-use 0.12.5
+## Browser Support And Limits
+
+This integration attaches to the Chrome/Chromium CDP endpoint that browser-use
+already created. browser-use remains the browser owner; DBAR is only an
+observer. The sidecar does not launch a browser, choose a browser binary, or
+install Playwright browsers.
+
+If browser-use fails because Chrome or a Playwright browser binary is missing,
+fix the browser-use/Playwright environment first. Then pass the actual
+`browser.cdp_url` into the DBAR sidecar.
+
+Because this lane is snapshot-only, these surfaces are not replayed or
+normalized by DBAR here:
+
+- WebSockets and Server-Sent Events (SSE) traffic
+- service workers
+- `sessionStorage`, IndexedDB, and browser cache state
+- cross-target workers and popups
+- downloads, uploads, auth prompts, and file pickers
+
+There is no browser-harness dependency, backend, or CI matrix in this
+integration.
+
+## Integration Contract With browser-use-compatible Agents
 
 The supported hook surface is:
 
@@ -50,7 +79,9 @@ await agent.run(on_step_end=...)
 The integration should not pass `on_step_end` into `Agent(...)`.
 
 The browser session should be started before the sidecar is launched so you can
-hand DBAR the real `browser.cdp_url` chosen by browser-use:
+hand DBAR the real `browser.cdp_url` chosen by browser-use. Keep that endpoint
+in memory; CDP URLs may contain credentials or bearer tokens and should not be
+printed, logged, or persisted raw.
 
 ```python
 browser = Browser(headless=False)
@@ -91,24 +122,26 @@ browser-use (Python)                 DBAR capture (Node.js)
     +- done                              +- done
 ```
 
-## Pinned Versions
+## Dependency Status
 
-- browser-use: 0.12.5
-- cdp-use: 1.4.5
-- langchain-openai: 0.1.25 for `example.py`
 - playwright-core: 1.58.2
 - ts-node: 10.9.2
 - typescript: 5.9.3
 - vitest: 4.1.2
+- browser-use Python package: not installed, pinned, or audited by DBAR
+  release automation until upstream publishes a dependency set with no
+  high/critical audit findings
 
 ## Setup
 
-### 1. Install Python dependencies
+### 1. Prepare Python dependencies
 
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -U pip pip-audit
+# Install browser-use and your LLM provider here only after your own audit
+# passes. requirements.txt is intentionally comment-only for DBAR 1.0.0.
 ```
 
 ### 2. Install Node.js dependencies
@@ -135,18 +168,20 @@ python example.py
 
 ### Run capture sidecar manually
 
-In your Python process:
+In your Python process, pass the CDP URL directly to the sidecar environment
+without printing it:
 
 ```python
+import os
+import subprocess
+
 browser = Browser(headless=False)
 await browser.start()
-print(browser.cdp_url)
-```
 
-Then start the capture sidecar with that CDP URL:
-
-```bash
-npx tsx capture.ts "$BROWSER_USE_CDP_URL" ./dbar-snapshots
+subprocess.Popen(
+    ["npx", "tsx", "capture.ts", "./dbar-snapshots"],
+    env={**os.environ, "BROWSER_USE_CDP_URL": browser.cdp_url},
+)
 ```
 
 Signal DBAR at step boundaries:
@@ -198,7 +233,7 @@ Signal files are consumed after being read. The sidecar polls every 250ms.
 | `capture.ts` | Node.js sidecar: CDP attach, target resolution, snapshot loop, manifest |
 | `capture.test.ts` | Unit tests for capture utilities |
 | `example.py` | End-to-end Python example with browser-use |
-| `requirements.txt` | Pinned Python dependencies |
+| `requirements.txt` | Comment-only dependency audit notice; DBAR 1.0.0 does not ship browser-use pins |
 | `package.json` | Node.js dependencies |
 | `tsconfig.json` | TypeScript configuration |
 
