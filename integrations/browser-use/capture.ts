@@ -11,8 +11,8 @@
  * use DBAR directly with Playwright.
  *
  * Usage:
- *   npx tsx capture.ts <cdpUrl> [outputDir]
- *   BROWSER_USE_CDP_URL=<cdpUrl> npx tsx capture.ts [outputDir]
+ *   Set BROWSER_USE_CDP_URL in the parent process environment and run:
+ *   npx tsx capture.ts [outputDir]
  *
  * @module
  */
@@ -67,14 +67,9 @@ export function parseArgs(): { cdpUrl: string; outputDir: string } {
   let cdpUrl = envCdpUrl;
   let outputDirArg = argv[0];
 
-  if (argv[0]?.startsWith("http://") || argv[0]?.startsWith("https://") || argv[0]?.startsWith("ws://") || argv[0]?.startsWith("wss://")) {
-    cdpUrl = argv[0];
-    outputDirArg = argv[1];
-  }
-
   if (!cdpUrl) {
     throw new Error(
-      "CDP URL is required. Pass it as the first argument or set BROWSER_USE_CDP_URL.",
+      "CDP URL is required. Set BROWSER_USE_CDP_URL from the parent process environment.",
     );
   }
 

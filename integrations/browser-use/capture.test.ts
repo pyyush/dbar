@@ -38,8 +38,9 @@ describe("parseArgs", () => {
     }
   });
 
-  it("shouldReadCdpUrlFromFirstArg", () => {
-    process.argv = ["node", "capture.ts", "http://127.0.0.1:9333/", "/tmp/out"];
+  it("shouldTreatTheFirstArgumentAsOutputDir", () => {
+    process.argv = ["node", "capture.ts", "/tmp/out"];
+    process.env.BROWSER_USE_CDP_URL = "http://127.0.0.1:9333/";
 
     const args = parseArgs();
 
@@ -62,6 +63,13 @@ describe("parseArgs", () => {
     delete process.env.BROWSER_USE_CDP_URL;
 
     expect(() => parseArgs()).toThrow(/CDP URL is required/);
+  });
+
+  it("shouldNotAcceptRawCdpUrlsAsProcessArguments", () => {
+    process.argv = ["node", "capture.ts", "http://127.0.0.1:9333/", "/tmp/out"];
+    delete process.env.BROWSER_USE_CDP_URL;
+
+    expect(() => parseArgs()).toThrow(/BROWSER_USE_CDP_URL/);
   });
 });
 
